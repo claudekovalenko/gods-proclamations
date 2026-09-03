@@ -1,0 +1,421 @@
+/* ---------------------------------------------------------------
+   Proclamations — a reading app for the passages on God's love.
+
+   The visual idea is a psalter page: scripture set as the display
+   type in black, and all the apparatus around it — day numbers,
+   references, labels, rules — in rubric red, the way headings were
+   inked in old service books. The red never touches the scripture
+   itself, only the things that point to it.
+   --------------------------------------------------------------- */
+
+:root{
+  --paper:#E9EBEF;
+  --leaf:#F6F7F9;
+  --sunk:#E1E4EA;
+  --ink:#171A28;
+  --ink-soft:#575D72;
+  --ink-faint:#868CA0;
+  --rule:#D2D6E0;
+  --rule-faint:#DFE2E9;
+  --rubric:#A22B36;
+  --rubric-soft:#C25E67;
+  --scrim:rgba(23,26,40,.45);
+
+  --f-text:"Newsreader", ui-serif, Georgia, "Times New Roman", serif;
+  --f-util:"Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --scale:1;                     /* set by the text-size control */
+  --bar:calc(3.65rem + env(safe-area-inset-bottom, 0px));
+
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#131520;
+    --leaf:#1B1E2B;
+    --sunk:#0D0F17;
+    --ink:#E3E5EE;
+    --ink-soft:#9AA0B4;
+    --ink-faint:#6E748A;
+    --rule:#2B2F41;
+    --rule-faint:#232636;
+    --rubric:#E0757E;
+    --rubric-soft:#B4646C;
+    --scrim:rgba(0,0,0,.62);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131520;
+  --leaf:#1B1E2B;
+  --sunk:#0D0F17;
+  --ink:#E3E5EE;
+  --ink-soft:#9AA0B4;
+  --ink-faint:#6E748A;
+  --rule:#2B2F41;
+  --rule-faint:#232636;
+  --rubric:#E0757E;
+  --rubric-soft:#B4646C;
+  --scrim:rgba(0,0,0,.62);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  min-height:100dvh;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--f-text);
+  font-optical-sizing:auto;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overscroll-behavior-y:none;
+}
+:focus-visible{outline:2px solid var(--rubric);outline-offset:3px;border-radius:3px}
+[hidden]{display:none !important}
+button{font:inherit;color:inherit}
+
+/* ---------------- masthead ---------------- */
+.masthead{
+  position:sticky;top:0;z-index:20;
+  display:flex;align-items:center;gap:.7rem;
+  padding:calc(.85rem + env(safe-area-inset-top,0px)) 1.15rem .8rem;
+  background:var(--paper);
+  border-bottom:1px solid var(--rule);
+}
+.masthead .mark{width:1.05rem;height:auto;flex:none;color:var(--rubric)}
+.masthead h1{
+  margin:0;flex:1;
+  font-size:1.02rem;font-weight:400;letter-spacing:-.005em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.masthead h1 em{font-style:italic;color:var(--rubric)}
+.icon-btn{
+  appearance:none;background:none;border:0;cursor:pointer;
+  width:2.4rem;height:2.4rem;flex:none;
+  display:grid;place-items:center;border-radius:999px;
+  color:var(--ink-soft);
+}
+.icon-btn:hover{color:var(--ink);background:var(--sunk)}
+.icon-btn svg{width:1.15rem;height:1.15rem;display:block}
+
+/* ---------------- shell ---------------- */
+main{
+  max-width:44rem;margin:0 auto;
+  padding:1.9rem 1.15rem calc(var(--bar) + 2.5rem);
+}
+@media (min-width:820px){
+  main{padding-top:2.6rem;padding-bottom:5rem}
+}
+
+/* ---------------- bottom tab bar ---------------- */
+.tabs{
+  position:fixed;left:0;right:0;bottom:0;z-index:20;
+  display:flex;
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  background:var(--paper);
+  border-top:1px solid var(--rule);
+}
+
+/* Let the page show faintly through the bars, but only where the blur is
+   actually supported — otherwise they stay solid and legible. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+  .masthead,.tabs{
+    backdrop-filter:saturate(1.4) blur(12px);
+    -webkit-backdrop-filter:saturate(1.4) blur(12px);
+  }
+  .masthead{background:color-mix(in srgb, var(--paper) 88%, transparent)}
+  .tabs{background:color-mix(in srgb, var(--paper) 92%, transparent)}
+}
+.tabs button{
+  appearance:none;background:none;border:0;cursor:pointer;
+  flex:1;min-width:0;
+  display:flex;flex-direction:column;align-items:center;gap:.2rem;
+  padding:.55rem .2rem .5rem;
+  font-family:var(--f-util);font-size:.6rem;font-weight:600;
+  letter-spacing:.07em;text-transform:uppercase;
+  color:var(--ink-faint);
+  border-top:2px solid transparent;margin-top:-1px;
+}
+.tabs button svg{width:1.25rem;height:1.25rem;display:block}
+.tabs button[aria-selected="true"]{color:var(--rubric);border-top-color:var(--rubric)}
+@media (min-width:820px){
+  .tabs{
+    position:static;border-top:0;border-bottom:1px solid var(--rule);
+    background:none;backdrop-filter:none;-webkit-backdrop-filter:none;
+    max-width:44rem;margin:0 auto;padding:0 1.15rem;
+    justify-content:flex-start;gap:.25rem;
+  }
+  .tabs button{
+    flex:0 0 auto;flex-direction:row;gap:.45rem;
+    padding:.85rem .9rem .75rem;font-size:.68rem;
+    border-top:0;border-bottom:2px solid transparent;margin:0 0 -1px;
+  }
+  .tabs button svg{width:.95rem;height:.95rem}
+  .tabs button[aria-selected="true"]{border-top-color:transparent;border-bottom-color:var(--rubric)}
+  :root{--bar:0px}
+}
+
+/* ---------------- the ruled page ---------------- */
+.spread{display:grid;grid-template-columns:1fr;gap:.55rem 2.5rem}
+@media (min-width:700px){
+  .spread{grid-template-columns:8.5rem minmax(0,1fr)}
+  .spread > .margin{
+    text-align:right;
+    border-right:1px solid var(--rule-faint);
+    padding-right:2.5rem;margin-right:-2.5rem;
+  }
+}
+.margin{
+  font-family:var(--f-util);
+  display:flex;flex-direction:column;gap:.3rem;
+  padding-top:.4rem;
+}
+.rubric{
+  font-size:.66rem;font-weight:600;text-transform:uppercase;letter-spacing:.14em;
+  color:var(--rubric);
+}
+.cite{font-size:.78rem;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.cite.quiet{color:var(--rubric-soft)}
+.column{min-width:0}
+
+/* ---------------- scripture ---------------- */
+.scripture{
+  font-size:calc(clamp(1.42rem, 1.06rem + 1.55vw, 1.95rem) * var(--scale));
+  font-weight:300;line-height:1.42;letter-spacing:-.011em;
+  text-wrap:pretty;margin:0;
+}
+.ell{color:var(--ink-faint)}
+.spoken{position:relative;padding-left:.62em}
+.spoken::before{
+  content:"\201C";
+  position:absolute;left:-.06em;top:-.02em;
+  font-size:1.5em;line-height:1;color:var(--rubric-soft);
+}
+@media (min-width:700px){
+  .spoken{padding-left:0}
+  .spoken::before{left:-.62em}
+}
+.title{
+  font-family:var(--f-util);font-size:.8rem;font-weight:500;
+  margin:1.35rem 0 0;
+}
+.gloss{
+  font-style:italic;
+  font-size:calc(1.02rem * var(--scale));line-height:1.62;color:var(--ink-soft);
+  border-top:1px solid var(--rule-faint);
+  margin:1.9rem 0 0;padding-top:1.1rem;
+  text-wrap:pretty;
+}
+.aloud{
+  margin:1.5rem 0 0;padding:.95rem 1.1rem;
+  background:var(--leaf);border:1px solid var(--rule-faint);border-radius:.5rem;
+}
+.aloud .rubric{margin-bottom:.4rem}
+.aloud p{
+  margin:0;font-size:calc(1.12rem * var(--scale));font-weight:300;line-height:1.45;
+  text-wrap:pretty;
+}
+
+/* ---------------- day controls ---------------- */
+.controls{
+  display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;
+  margin-top:2.4rem;padding-top:1.15rem;border-top:1px solid var(--rule);
+}
+.controls .spacer{flex:1}
+.pill{
+  appearance:none;cursor:pointer;
+  background:var(--leaf);border:1px solid var(--rule);border-radius:999px;
+  color:var(--ink-soft);
+  font-family:var(--f-util);font-size:.7rem;font-weight:600;
+  letter-spacing:.07em;text-transform:uppercase;
+  padding:.52rem .9rem;
+  display:inline-flex;align-items:center;gap:.4rem;
+}
+.pill svg{width:.9rem;height:.9rem}
+.pill:hover{color:var(--ink);border-color:var(--ink-faint)}
+.pill:disabled{opacity:.35;cursor:default}
+.pill.on{color:var(--rubric);border-color:var(--rubric)}
+.linkbtn{
+  appearance:none;background:none;border:0;cursor:pointer;
+  font-family:var(--f-util);font-size:.7rem;font-weight:600;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--rubric);
+  padding:.52rem .3rem;
+}
+
+/* ---------------- list views ---------------- */
+h2.head{
+  font-weight:300;font-style:italic;font-size:1.85rem;letter-spacing:-.015em;
+  margin:0 0 .45rem;text-wrap:balance;
+}
+p.standfirst{
+  font-size:1.01rem;line-height:1.62;color:var(--ink-soft);
+  margin:0 0 2.4rem;text-wrap:pretty;
+}
+.entry{
+  display:grid;grid-template-columns:1fr;gap:.45rem 2.5rem;
+  padding:1.7rem 0;border-top:1px solid var(--rule-faint);
+}
+@media (min-width:700px){ .entry{grid-template-columns:8.5rem minmax(0,1fr)} }
+.entry .body{min-width:0}
+.entry blockquote{
+  margin:0;font-size:calc(1.14rem * var(--scale));font-weight:300;line-height:1.52;
+  text-wrap:pretty;
+}
+.entry .note{
+  font-family:var(--f-util);font-size:.73rem;color:var(--ink-soft);margin:.6rem 0 0;
+}
+.also{font-family:var(--f-util);font-size:.74rem;color:var(--ink-faint);margin:.85rem 0 0}
+
+/* index of days */
+.index{display:grid;grid-template-columns:1fr;border-top:1px solid var(--rule-faint)}
+@media (min-width:640px){ .index{grid-template-columns:1fr 1fr;column-gap:2rem} }
+.index button{
+  appearance:none;background:none;border:0;border-bottom:1px solid var(--rule-faint);
+  cursor:pointer;text-align:left;width:100%;
+  display:grid;grid-template-columns:2.1rem 1fr auto;align-items:baseline;gap:.5rem;
+  padding:.8rem .1rem;
+}
+.index .n{
+  font-family:var(--f-util);font-size:.66rem;font-weight:600;letter-spacing:.05em;
+  color:var(--rubric);font-variant-numeric:tabular-nums;
+}
+.index .t{font-size:1rem;font-weight:300;line-height:1.35}
+.index .t small{display:block;font-size:.78rem;color:var(--ink-faint);font-family:var(--f-util)}
+.index button:hover .t{color:var(--rubric)}
+.index .flag{font-size:.8rem;color:var(--rubric);line-height:1}
+
+/* segmented control */
+.segmented{
+  display:inline-flex;gap:.15rem;padding:.2rem;margin:0 0 2.2rem;
+  background:var(--sunk);border-radius:999px;
+}
+.segmented button{
+  appearance:none;background:none;border:0;cursor:pointer;border-radius:999px;
+  font-family:var(--f-util);font-size:.7rem;font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-faint);padding:.45rem .95rem;
+}
+.segmented button[aria-selected="true"]{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+/* method list */
+.method{border-top:1px solid var(--rule);margin-top:2.6rem;padding-top:1.6rem}
+.method ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.95rem;counter-reset:m}
+.method li{
+  display:grid;grid-template-columns:1.5rem 1fr;gap:.8rem;counter-increment:m;
+  font-size:1rem;line-height:1.6;color:var(--ink-soft);
+}
+.method li::before{
+  content:counter(m);
+  font-family:var(--f-util);font-size:.66rem;font-weight:600;
+  color:var(--rubric);letter-spacing:.05em;padding-top:.4rem;
+}
+.method li b{color:var(--ink);font-weight:600}
+
+/* empty state */
+.empty{
+  text-align:center;padding:3.5rem 1rem;color:var(--ink-faint);
+  font-style:italic;font-size:1.05rem;line-height:1.6;
+}
+.empty svg{width:1.6rem;height:1.6rem;display:block;margin:0 auto 1rem;color:var(--rule)}
+
+/* ---------------- settings sheet ---------------- */
+.sheet-scrim{
+  position:fixed;inset:0;z-index:40;
+  background:var(--scrim);
+  display:flex;align-items:flex-end;justify-content:center;
+}
+@media (min-width:700px){ .sheet-scrim{align-items:center} }
+.sheet{
+  background:var(--paper);
+  width:100%;max-width:26rem;
+  border-radius:1rem 1rem 0 0;
+  padding:1.4rem 1.4rem calc(1.6rem + env(safe-area-inset-bottom,0px));
+  max-height:88dvh;overflow-y:auto;
+  border-top:1px solid var(--rule);
+  animation:rise .24s cubic-bezier(.2,.8,.3,1);
+}
+@media (min-width:700px){
+  .sheet{border-radius:.9rem;border:1px solid var(--rule);padding-bottom:1.6rem}
+}
+@keyframes rise{from{transform:translateY(14px);opacity:0}to{transform:none;opacity:1}}
+.sheet h2{
+  font-family:var(--f-util);font-size:.7rem;font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--rubric);
+  margin:0 0 1.3rem;
+}
+.field{margin:0 0 1.5rem}
+.field > label{
+  display:block;font-family:var(--f-util);font-size:.76rem;font-weight:600;
+  margin:0 0 .3rem;
+}
+.field .help{
+  font-family:var(--f-util);font-size:.72rem;line-height:1.5;
+  color:var(--ink-faint);margin:.35rem 0 .55rem;
+}
+.field input[type=text]{
+  width:100%;font-family:var(--f-text);font-size:1.05rem;
+  padding:.6rem .75rem;border-radius:.5rem;
+  border:1px solid var(--rule);background:var(--leaf);color:var(--ink);
+}
+.choices{display:flex;gap:.3rem;flex-wrap:wrap}
+.choices button{
+  appearance:none;cursor:pointer;
+  background:var(--leaf);border:1px solid var(--rule);border-radius:999px;
+  font-family:var(--f-util);font-size:.72rem;font-weight:600;
+  color:var(--ink-soft);padding:.45rem .85rem;
+}
+.choices button[aria-pressed="true"]{
+  background:var(--rubric);border-color:var(--rubric);color:#fff;
+}
+:root[data-theme="dark"] .choices button[aria-pressed="true"],
+:root:not([data-theme="light"]) .choices button[aria-pressed="true"]{color:#14151F}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]) .choices button[aria-pressed="true"]{color:#fff}
+}
+.sheet .close{
+  width:100%;margin-top:.4rem;
+  appearance:none;cursor:pointer;
+  background:var(--ink);color:var(--paper);border:0;border-radius:.55rem;
+  font-family:var(--f-util);font-size:.78rem;font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;padding:.75rem;
+}
+.note-block{
+  font-family:var(--f-util);font-size:.72rem;line-height:1.65;color:var(--ink-faint);
+  border-top:1px solid var(--rule-faint);padding-top:1.1rem;margin-top:.3rem;
+}
+.note-block b{color:var(--ink-soft);font-weight:600}
+
+/* toast */
+.toast{
+  position:fixed;z-index:50;
+  left:50%;transform:translateX(-50%);
+  bottom:calc(var(--bar) + 1.1rem);
+  background:var(--ink);color:var(--paper);
+  font-family:var(--f-util);font-size:.76rem;font-weight:500;
+  padding:.6rem 1rem;border-radius:999px;
+  box-shadow:0 8px 24px -10px rgba(0,0,0,.5);
+  animation:rise .2s ease;
+}
+
+/* install hint */
+.install{
+  display:flex;align-items:center;gap:.8rem;
+  background:var(--leaf);border:1px solid var(--rule-faint);border-radius:.6rem;
+  padding:.85rem 1rem;margin:0 0 2rem;
+  font-family:var(--f-util);font-size:.78rem;line-height:1.5;color:var(--ink-soft);
+}
+.install .pill{flex:none}
+.install .dismiss{
+  appearance:none;background:none;border:0;cursor:pointer;
+  color:var(--ink-faint);font-size:1.1rem;line-height:1;padding:.2rem .3rem;flex:none;
+}
+
+.fade{animation:fade .3s ease}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .fade,.sheet,.toast{animation:none}
+  *{transition:none !important}
+}

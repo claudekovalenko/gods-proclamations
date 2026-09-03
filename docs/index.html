@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Proclamations</title>
+<meta name="description" content="What God says about his love — a passage a day, offline, on your phone.">
+
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#E9EBEF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131520" media="(prefers-color-scheme: dark)">
+
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<link rel="icon" href="icons/mark.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Proclamations">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..700&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..700&display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<!-- icon sprite -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-mark" viewBox="0 0 200 110">
+    <g fill="currentColor">
+      <g transform="translate(6,6)">
+        <circle cx="34" cy="62" r="28"/>
+        <path d="M 8 52 C 14 32 38 14 76 8 C 62 26 48 36 38 42 Z"/>
+      </g>
+      <g transform="translate(100,6)">
+        <circle cx="34" cy="62" r="28"/>
+        <path d="M 8 52 C 14 32 38 14 76 8 C 62 26 48 36 38 42 Z"/>
+      </g>
+    </g>
+  </symbol>
+  <symbol id="i-today" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+          stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>
+  </symbol>
+  <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+          stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 4.5A1.5 1.5 0 0 1 4.5 3H10a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4.5A1.5 1.5 0 0 1 3 15.5z"/>
+    <path d="M21 4.5A1.5 1.5 0 0 0 19.5 3H14a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h5.5a1.5 1.5 0 0 0 1.5-1.5z"/>
+  </symbol>
+  <symbol id="i-voice" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+          stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12a9 9 0 0 1-9 9H3l2.3-2.3A9 9 0 1 1 21 12z"/>
+  </symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+          stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/>
+    <path d="m15.5 8.5-2 5-5 2 2-5z"/>
+  </symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+          stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 3.8h12a1 1 0 0 1 1 1v15.4l-7-4-7 4V4.8a1 1 0 0 1 1-1z"/>
+  </symbol>
+  <symbol id="i-bookmark-fill" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M6 3.8h12a1 1 0 0 1 1 1v15.4l-7-4-7 4V4.8a1 1 0 0 1 1-1z"/>
+  </symbol>
+  <symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+          stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3v13M12 3 8 7M12 3l4 4"/>
+    <path d="M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"/>
+  </symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+          stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3.2"/>
+    <path d="M19.4 14.6a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1v.3a2 2 0 1 1-4 0v-.2a1.6 1.6 0 0 0-2.8-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7h-.3a2 2 0 1 1 0-4h.2a1.6 1.6 0 0 0 1.1-2.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h.1A1.6 1.6 0 0 0 10 3.3V3a2 2 0 1 1 4 0v.2a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7h.3a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1.3 1z"/>
+  </symbol>
+  <symbol id="i-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></symbol>
+</svg>
+
+<header class="masthead">
+  <svg class="mark" viewBox="0 0 200 110" aria-hidden="true"><use href="#i-mark"/></svg>
+  <h1>Proclamations</h1>
+  <button class="icon-btn" id="settings-btn" aria-label="Settings">
+    <svg aria-hidden="true"><use href="#i-gear"/></svg>
+  </button>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Sections">
+  <button role="tab" data-view="today" aria-selected="true">
+    <svg aria-hidden="true"><use href="#i-today"/></svg>Today</button>
+  <button role="tab" data-view="all" aria-selected="false">
+    <svg aria-hidden="true"><use href="#i-book"/></svg>Read</button>
+  <button role="tab" data-view="voice" aria-selected="false">
+    <svg aria-hidden="true"><use href="#i-voice"/></svg>His voice</button>
+  <button role="tab" data-view="theme" aria-selected="false">
+    <svg aria-hidden="true"><use href="#i-compass"/></svg>When…</button>
+  <button role="tab" data-view="saved" aria-selected="false">
+    <svg aria-hidden="true"><use href="#i-bookmark"/></svg>Saved</button>
+</nav>
+
+<main id="stage"></main>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
