@@ -1,11 +1,8 @@
 #!/bin/bash
-# Renders the app icons from the same quotation-mark path the app draws in its
-# masthead, using the headless Chromium that ships with this environment.
+# Renders the app icons from the same heart path the app draws in its masthead,
+# using the headless Chromium that ships with this environment.
 #
 #   tools/make-icons.sh docs/icons
-#
-# Two forms of the mark: the pair for app icons, and a single comma for the
-# favicon, which is too small to hold two.
 set -e
 SCRATCH="$(mktemp -d)"
 trap 'rm -rf "$SCRATCH"' EXIT
@@ -15,14 +12,14 @@ INK="#131520"
 RED="#D8555F"
 mkdir -p "$OUT"
 
-COMMA='<circle cx="34" cy="62" r="28"/><path d="M 8 52 C 14 32 38 14 76 8 C 62 26 48 36 38 42 Z"/>'
-PAIR="<svg viewBox=\"12 14 164 82\" xmlns=\"http://www.w3.org/2000/svg\"><g fill=\"$RED\"><g transform=\"translate(6,6)\">$COMMA</g><g transform=\"translate(100,6)\">$COMMA</g></g></svg>"
-ONE="<svg viewBox=\"6 8 70 82\" xmlns=\"http://www.w3.org/2000/svg\"><g fill=\"$RED\">$COMMA</g></svg>"
+HEART='<path d="M 50 88 C 20 66 6 48 6 32 C 6 18 17 8 30 8 C 39 8 46 13 50 20 C 54 13 61 8 70 8 C 83 8 94 18 94 32 C 94 48 80 66 50 88 Z"/>'
+# viewBox trimmed to the path's own bounds (x 6–94, y 8–88) so the shape
+# centres exactly on the artboard.
+MARK="<svg viewBox=\"6 8 88 80\" xmlns=\"http://www.w3.org/2000/svg\"><g fill=\"$RED\">$HEART</g></svg>"
 
-# $1 size  $2 filename  $3 mark width as a fraction of the canvas  $4 pair|one
+# $1 size  $2 filename  $3 mark width as a fraction of the canvas
 render () {
-  local size=$1 file=$2 frac=$3 form=${4:-pair} svg ratio
-  if [ "$form" = one ]; then svg="$ONE"; ratio="82/70"; else svg="$PAIR"; ratio="82/164"; fi
+  local size=$1 file=$2 frac=$3 svg="$MARK" ratio="80/88"
   # Chromium will not render a viewport below about 150px, and for small
   # --window-size values the screenshot crops the top-left corner, so the
   # artboard is pinned to 0,0 rather than centred in the page.
@@ -105,20 +102,23 @@ PY
 }
 
 echo "rendering icons into $OUT"
-render 512 icon-512.png           0.62 pair
-render 192 icon-192.png           0.62 pair
-render 512 icon-maskable-512.png  0.44 pair   # 44% keeps the mark inside the mask safe zone
-render 192 icon-maskable-192.png  0.44 pair
-render 180 apple-touch-icon.png   0.60 pair
+render 512 icon-512.png           0.56
+render 192 icon-192.png           0.56
+render 512 icon-maskable-512.png  0.40   # 40% keeps the heart inside the mask safe zone
+render 192 icon-maskable-192.png  0.40
+render 180 apple-touch-icon.png   0.54
 
-render 512 _favicon-src.png       0.66 one
+# Chromium will not render a viewport small enough for the favicon directly, so
+# draw it large and box-filter it down — an exact 16:1 reduction.
+render 512 _favicon-src.png       0.72
 downscale _favicon-src.png favicon-32.png 16
 rm -f "$OUT/_favicon-src.png"
 
+# scalable favicon, for browsers that prefer one
 cat > "$OUT/mark.svg" <<SVG
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
   <rect width="96" height="96" rx="18" fill="$INK"/>
-  <g fill="$RED" transform="translate(16,10) scale(0.78)">$COMMA</g>
+  <g fill="$RED" transform="translate(15,16) scale(0.66)">$HEART</g>
 </svg>
 SVG
 echo "  mark.svg"

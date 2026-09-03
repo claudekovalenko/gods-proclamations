@@ -88,7 +88,7 @@ docs/                 the app — this directory is what GitHub Pages serves
   manifest.webmanifest
   icons/              generated — see tools/make-icons.sh
 gods-love/            the same passages as Markdown
-tools/make-icons.sh   redraws the icons from the quotation-mark path
+tools/make-icons.sh   redraws the icons from the heart path in index.html
 .github/workflows/pages.yml
 ```
 

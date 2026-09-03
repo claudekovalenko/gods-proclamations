@@ -27,17 +27,11 @@
 
 <!-- icon sprite -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
-  <symbol id="i-mark" viewBox="0 0 200 110">
-    <g fill="currentColor">
-      <g transform="translate(6,6)">
-        <circle cx="34" cy="62" r="28"/>
-        <path d="M 8 52 C 14 32 38 14 76 8 C 62 26 48 36 38 42 Z"/>
-      </g>
-      <g transform="translate(100,6)">
-        <circle cx="34" cy="62" r="28"/>
-        <path d="M 8 52 C 14 32 38 14 76 8 C 62 26 48 36 38 42 Z"/>
-      </g>
-    </g>
+  <!-- the app's mark, and the shape the home-screen icon is drawn from;
+       the viewBox is trimmed to the path's own bounds -->
+  <symbol id="i-mark" viewBox="6 8 88 80">
+    <path fill="currentColor" d="M 50 88 C 20 66 6 48 6 32 C 6 18 17 8 30 8 C 39 8 46 13 50 20
+             C 54 13 61 8 70 8 C 83 8 94 18 94 32 C 94 48 80 66 50 88 Z"/>
   </symbol>
   <symbol id="i-today" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
           stroke-linecap="round" stroke-linejoin="round">
@@ -82,7 +76,7 @@
 </svg>
 
 <header class="masthead">
-  <svg class="mark" viewBox="0 0 200 110" aria-hidden="true"><use href="#i-mark"/></svg>
+  <svg class="mark" viewBox="6 8 88 80" aria-hidden="true"><use href="#i-mark"/></svg>
   <h1>Proclamations</h1>
   <button class="icon-btn" id="settings-btn" aria-label="Settings">
     <svg aria-hidden="true"><use href="#i-gear"/></svg>

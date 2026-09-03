@@ -85,7 +85,9 @@ button{font:inherit;color:inherit}
   background:var(--paper);
   border-bottom:1px solid var(--rule);
 }
-.masthead .mark{width:1.05rem;height:auto;flex:none;color:var(--rubric)}
+/* explicit height: Chromium resolves height:auto on a viewBox'd svg
+   unreliably inside a flex row */
+.masthead .mark{width:1rem;height:.91rem;flex:none;color:var(--rubric)}
 .masthead h1{
   margin:0;flex:1;
   font-size:1.02rem;font-weight:400;letter-spacing:-.005em;
