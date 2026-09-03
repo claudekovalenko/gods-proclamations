@@ -29,11 +29,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # One-time setup, which this workflow cannot do for itself: the token it
+      # runs with is not allowed to create the Pages site. In the repository's
+      # Settings → Pages, set Source to "GitHub Actions". Until that is done
+      # this step fails with "Get Pages site failed … Not Found".
       - name: Configure Pages
         uses: actions/configure-pages@v5
-        with:
-          # Turn Pages on the first time this runs, so no manual setup is needed.
-          enablement: true
 
       - name: Upload the app
         uses: actions/upload-pages-artifact@v3
