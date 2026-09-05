@@ -1,5 +1,13 @@
 /* Proclamations — app shell.
-   No framework, no build step: the whole app is these three files plus data.js. */
+   No framework, no build step: the whole app is these files plus data.js.
+
+   Two translations. The World English Bible is public domain, so it ships
+   with the app and works offline from the first launch. The ESV is not:
+   Crossway's guidelines allow quoting it only where the quotations are
+   under a quarter of the work, which an app made entirely of scripture is
+   not. The sanctioned route is their own API, called with a key belonging
+   to the reader — so ESV text is fetched at runtime with a key kept on the
+   device, never bundled and never committed. */
 
 (() => {
 "use strict";
@@ -7,7 +15,15 @@
 const stage = document.getElementById("stage");
 const DAY_MS = 86400000;
 
-/* ---------------- preferences ---------------- */
+const ESV_ENDPOINT = "https://api.esv.org/v3/passage/text/";
+const ESV_CREDIT = `Scripture quotations are from the ESV® Bible (The Holy Bible,
+  English Standard Version®), © 2001 by Crossway, a publishing ministry of Good News
+  Publishers. Used by permission. All rights reserved. <a href="https://www.esv.org"
+  target="_blank" rel="noopener">esv.org</a>`;
+const WEB_CREDIT = `Passages are from the World English Bible, which is public domain.
+  Where it prints “Yahweh”, most Bibles print “the LORD” — it is the same name.`;
+
+/* ---------------- storage ---------------- */
 
 const store = {
   get(k, fallback){
@@ -24,7 +40,8 @@ const store = {
 const prefs = {
   name:  store.get("p.name", ""),
   scale: parseFloat(store.get("p.scale", "1")) || 1,
-  theme: store.get("p.theme", "system")
+  theme: store.get("p.theme", "system"),
+  bible: store.get("p.bible", "web")            /* "web" | "esv" */
 };
 
 function applyPrefs(){
@@ -60,26 +77,167 @@ THEMES.forEach(t => t.items.forEach(it => { it.key = enrol(it); }));
 MEMORY.forEach(m => { m.key = enrol(m); });
 
 let saved = new Set(store.json("p.saved", []));
-function isSaved(k){ return saved.has(k); }
+const isSaved = k => saved.has(k);
 function toggleSave(k){
   if(saved.has(k)){ saved.delete(k); toast("Removed"); }
   else { saved.add(k); toast("Saved"); }
   store.set("p.saved", JSON.stringify([...saved]));
 }
 
+/* ---------------- the ESV ---------------- */
+
+const esv = {
+  key(){ return store.get("p.esvKey", ""); },
+  setKey(v){ store.set("p.esvKey", v); },
+  on(){ return prefs.bible === "esv" && !!esv.key(); },
+
+  cache: store.json("esv.cache", {}),
+  saveCache(){ store.set("esv.cache", JSON.stringify(esv.cache)); },
+
+  /* The data uses typographic dashes; the API wants plain ones. */
+  query(ref){ return ref.replace(/[–—]/g, "-"); },
+
+  pending: new Set(),
+  /* refs whose fetch already failed this session, so a dead key or a flight-mode
+     phone does not re-request them on every repaint */
+  tried: new Set(),
+  failed: false,
+
+  /* Returns ESV text if it is already on the device, otherwise null. */
+  text(ref){ return esv.on() ? (esv.cache[ref] || null) : null; },
+
+  async fetchOne(ref){
+    if(esv.cache[ref] || esv.pending.has(ref)) return false;
+    esv.pending.add(ref);
+    esv.tried.add(ref);
+    try{
+      const url = ESV_ENDPOINT + "?" + new URLSearchParams({
+        q: esv.query(ref),
+        "include-passage-references": "false",
+        "include-verse-numbers": "false",
+        "include-first-verse-numbers": "false",
+        "include-footnotes": "false",
+        "include-headings": "false",
+        "include-short-copyright": "false",
+        "include-passage-horizontal-lines": "false",
+        "include-heading-horizontal-lines": "false",
+        "indent-paragraphs": "0",
+        "indent-poetry": "false"
+      });
+      const res = await fetch(url, {headers:{Authorization: "Token " + esv.key()}});
+      if(res.status === 401){ esv.failed = "key"; return false; }
+      if(!res.ok){ esv.failed = "http"; return false; }
+      const data = await res.json();
+      const joined = (data.passages || [])
+        .map(p => p.replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+        .join(" … ");
+      if(!joined){ return false; }
+      esv.cache[ref] = joined;
+      esv.saveCache();
+      esv.failed = false;
+      return true;
+    }catch(e){
+      esv.failed = "network";
+      return false;
+    }finally{
+      esv.pending.delete(ref);
+    }
+  },
+
+  /* Fetch what the current view needs, a few at a time, then repaint once.
+     Repaint only on a real change: repainting after a failure would call
+     straight back into fill() and spin. */
+  async fill(refs){
+    if(!esv.on()) return;
+    const missing = [...new Set(refs)].filter(r =>
+      !esv.cache[r] && !esv.pending.has(r) && !esv.tried.has(r));
+    if(!missing.length) return;
+    let changed = false;
+    for(let i = 0; i < missing.length; i += 4){
+      const batch = missing.slice(i, i + 4);
+      const got = await Promise.all(batch.map(r => esv.fetchOne(r)));
+      changed = changed || got.some(Boolean);
+      if(esv.failed === "key") break;
+    }
+    if(changed) paint(false);
+  },
+
+  /* Everything, for reading later with no signal. */
+  async fillAll(onProgress){
+    const all = [...new Set([...registry.values()].map(p => p.ref))];
+    const missing = all.filter(r => !esv.cache[r]);
+    let done = 0;
+    for(let i = 0; i < missing.length; i += 4){
+      const batch = missing.slice(i, i + 4);
+      await Promise.all(batch.map(r => esv.fetchOne(r)));
+      done += batch.length;
+      onProgress(Math.min(done, missing.length), missing.length);
+      if(esv.failed === "key") return false;
+    }
+    paint(false);
+    return true;
+  },
+
+  cachedCount(){
+    const all = new Set([...registry.values()].map(p => p.ref));
+    return [...all].filter(r => esv.cache[r]).length;
+  },
+  totalCount(){ return new Set([...registry.values()].map(p => p.ref)).size; }
+};
+
 /* ---------------- helpers ---------------- */
 
-const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc = s => String(s).replace(/[&<>"]/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const body = s => esc(s).replace(/…/g, '<span class="ell">…</span>');
 
-function icon(id, cls){ return `<svg class="${cls || ""}" aria-hidden="true"><use href="#${id}"/></svg>`; }
+const icon = (id, cls) => `<svg class="${cls || ""}" aria-hidden="true"><use href="#${id}"/></svg>`;
+
+/* Which translations the view being built actually put on screen. The credit
+   has to name the text the reader is looking at, not the one they asked for:
+   with the ESV selected but a passage not yet fetched, what shows is the WEB. */
+let usedEsv = false, usedWeb = false;
+
+/* The text to show for a passage, and whether it is still the fallback. */
+function textFor(p){
+  const e = esv.text(p.ref);
+  if(e){ usedEsv = true; return {s:e, esv:true}; }
+  usedWeb = true;
+  return {s:p.s, esv:false};
+}
 
 function saveBtn(k){
   const on = isSaved(k);
   return `<button class="icon-btn" data-save="${k}" aria-pressed="${on}"
-           aria-label="${on ? "Remove from saved" : "Save this passage"}"
-           style="color:${on ? "var(--rubric)" : "var(--ink-faint)"};width:2rem;height:2rem">
-           ${icon(on ? "i-bookmark-fill" : "i-bookmark")}</button>`;
+    aria-label="${on ? "Remove from saved" : "Save this passage"}"
+    style="color:${on ? "var(--rubric)" : "var(--ink-faint)"}">
+    ${icon(on ? "i-bookmark-fill" : "i-bookmark")}</button>`;
+}
+
+/* One passage, one card. */
+function card(p, opts = {}){
+  const t = textFor(p);
+  const waiting = esv.on() && !t.esv;
+  return `
+  <article class="card${waiting ? " pending" : ""}">
+    <div class="card-head">
+      ${opts.num ? `<span class="card-num">${esc(opts.num)}</span>` : ""}
+      <span class="card-ref">${esc(p.ref)}</span>
+      ${opts.tag ? `<span class="card-tag">${esc(opts.tag)}</span>` : ""}
+      ${saveBtn(p.key || opts.k)}
+    </div>
+    <p class="card-text${p.spoken ? " spoken" : ""}">${body(t.s)}${p.spoken ? "”" : ""}</p>
+    ${opts.note ? `<p class="card-note">${esc(opts.note)}</p>` : ""}
+  </article>`;
+}
+
+/* Called last in each view, once every card above it has resolved its text. */
+function credit(){
+  const parts = [];
+  if(usedWeb || (!usedWeb && !usedEsv)) parts.push(WEB_CREDIT);
+  if(usedEsv) parts.push(ESV_CREDIT);
+  return `<p class="credit">${parts.join("<br><br>")}</p>`;
 }
 
 let toastTimer;
@@ -91,19 +249,20 @@ function toast(msg){
   el.textContent = msg;
   document.body.appendChild(el);
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.remove(), 1900);
+  toastTimer = setTimeout(() => el.remove(), 2200);
 }
 
 async function share(k){
   const p = registry.get(k);
   if(!p) return;
-  const text = `“${p.s}”\n— ${p.ref} (WEB)`;
+  const t = textFor(p);
+  const text = `“${t.s}”\n— ${p.ref} (${t.esv ? "ESV" : "WEB"})`;
   try{
     if(navigator.share){ await navigator.share({text}); return; }
     await navigator.clipboard.writeText(text);
     toast("Copied");
   }catch(e){
-    if(e && e.name === "AbortError") return;      /* the person closed the share sheet */
+    if(e && e.name === "AbortError") return;   /* the person closed the share sheet */
     toast("Couldn’t share — copy it from the page instead");
   }
 }
@@ -132,47 +291,49 @@ let dayIdx = autoIndex();
 let readTab = "thirty";
 
 /* ---------------- views ---------------- */
-
-function passageMarkup(p, cls){
-  return `<p class="${cls}${p.spoken ? " spoken" : ""}">${body(p.s)}${p.spoken ? "”" : ""}</p>`;
-}
+/* each returns [html, refs it needs] */
 
 function viewToday(){
   const d = DAYS[dayIdx];
   const auto = autoIndex();
+  const t = textFor(d);
   const aloud = d.aloud && prefs.name
     ? `<div class="aloud">
-         <div class="rubric">Say it aloud</div>
+         <span class="rubric">Say it aloud</span>
          <p>“${body(d.aloud.replace("{name}", prefs.name))}”</p>
        </div>` : "";
 
-  return `
+  const html = `
   ${installBanner()}
   <article class="spread fade">
     <div class="margin">
-      <div class="rubric">Day ${dayIdx + 1} of ${DAYS.length}</div>
-      <div class="cite">${esc(d.ref)}</div>
-      ${d.spoken ? '<div class="cite quiet">God speaking</div>' : ""}
+      <span class="rubric">Day ${dayIdx + 1} of ${DAYS.length}</span>
+      <span class="cite">${esc(d.ref)} · ${t.esv ? "ESV" : "WEB"}</span>
+      ${d.spoken ? '<span class="cite quiet">God speaking</span>' : ""}
     </div>
     <div class="column">
-      ${passageMarkup(d, "scripture")}
+      <p class="scripture${d.spoken ? " spoken" : ""}">${body(t.s)}${d.spoken ? "”" : ""}</p>
       <p class="title">${esc(d.t)}</p>
       ${aloud}
       <p class="gloss">${body(d.g)}</p>
 
       <div class="controls">
-        <button class="pill" data-step="-1" ${dayIdx === 0 ? "disabled" : ""}>
-          ${icon("i-left")}Back</button>
-        <button class="pill" data-step="1" ${dayIdx === DAYS.length - 1 ? "disabled" : ""}>
-          Next${icon("i-right")}</button>
+        <span class="stepper">
+          <button data-step="-1" ${dayIdx === 0 ? "disabled" : ""} aria-label="Previous day">
+            ${icon("i-left")}</button>
+          <button data-step="1" ${dayIdx === DAYS.length - 1 ? "disabled" : ""} aria-label="Next day">
+            ${icon("i-right")}</button>
+        </span>
+        ${dayIdx !== auto ? '<button class="linkbtn" data-today>Today’s</button>' : ""}
         <span class="spacer"></span>
         <button class="pill${isSaved(d.key) ? " on" : ""}" data-save="${d.key}">
           ${icon(isSaved(d.key) ? "i-bookmark-fill" : "i-bookmark")}${isSaved(d.key) ? "Saved" : "Save"}</button>
-        <button class="pill" data-share="${d.key}">${icon("i-share")}Share</button>
+        <button class="pill" data-share="${d.key}" aria-label="Share">${icon("i-share")}</button>
       </div>
-      ${dayIdx !== auto ? '<button class="linkbtn" data-today>← Back to today’s</button>' : ""}
+      ${credit()}
     </div>
   </article>`;
+  return [html, [d.ref]];
 }
 
 function viewAll(){
@@ -187,28 +348,16 @@ function viewAll(){
     </div>`;
 
   const memorize = `
-    ${MEMORY.map((m, i) => `
-      <div class="entry">
-        <div class="margin">
-          <div class="rubric">${String(i + 1).padStart(2, "0")}</div>
-          <div class="cite">${esc(m.ref)}</div>
-        </div>
-        <div class="body">
-          <blockquote>${body(m.s)}</blockquote>
-          <div style="margin-top:.5rem">${saveBtn(m.key)}</div>
-        </div>
-      </div>`).join("")}
-    <div class="spread">
-      <div class="margin"><div class="rubric">Method</div></div>
-      <div class="column">
-        <div class="method">
-          <ol>${MEMORY_METHOD.map(([b, rest]) =>
-            `<li><span><b>${esc(b)}</b> ${esc(rest)}</span></li>`).join("")}</ol>
-        </div>
-      </div>
-    </div>`;
+    <div class="stack">
+      ${MEMORY.map((m, i) => card(m, {num:String(i + 1).padStart(2, "0")})).join("")}
+    </div>
+    <div class="method">
+      <ol>${MEMORY_METHOD.map(([b, rest]) =>
+        `<li><span><b>${esc(b)}</b> ${esc(rest)}</span></li>`).join("")}</ol>
+    </div>
+    ${credit()}`;
 
-  return `
+  const html = `
   <div class="fade">
     <h2 class="head">${readTab === "thirty" ? "The thirty" : "Twelve to memorize"}</h2>
     <p class="standfirst">${readTab === "thirty"
@@ -220,98 +369,83 @@ function viewAll(){
     </div>
     ${readTab === "thirty" ? thirty : memorize}
   </div>`;
+  return [html, readTab === "memorize" ? MEMORY.map(m => m.ref) : []];
 }
 
 function viewVoice(){
-  return `
+  const html = `
   <div class="fade">
     <h2 class="head">In his own words</h2>
     <p class="standfirst">The passages where God speaks of his love himself — <em>I have loved
     you</em>, <em>I will not forget you</em>, <em>I will carry you</em>. Read these aloud.
     Something in them is meant to be heard rather than scanned.</p>
-    ${VOICE.map(g => g.items.map((it, i) => `
-      <div class="entry">
-        <div class="margin">
-          ${i === 0 ? `<div class="rubric">${esc(g.group)}</div>` : ""}
-          <div class="cite">${esc(it.ref)}</div>
+    ${VOICE.map(g => `
+      <section class="group">
+        <span class="rubric">${esc(g.group)}</span>
+        <div class="stack">
+          ${g.items.map(it => card({...it, spoken:true}, {note:it.note})).join("")}
         </div>
-        <div class="body">
-          <blockquote class="spoken">${body(it.s)}”</blockquote>
-          ${it.note ? `<p class="note">${esc(it.note)}</p>` : ""}
-          <div style="margin-top:.5rem">${saveBtn(it.key)}</div>
-        </div>
-      </div>`).join("")).join("")}
-    <div class="spread" style="margin-top:2.4rem">
-      <div class="margin"><div class="rubric">A way in</div></div>
-      <div class="column">
-        <p class="gloss" style="border-top:0;padding-top:0;margin-top:0">Read one aloud. Then read
-        it again with your own name in it where the text allows${prefs.name
-          ? ` — <em>I have loved you, ${esc(prefs.name)}, with an everlasting love.</em>`
-          : " — you can set your name in settings and the app will offer that reading."}
-        Not because the promise is about you alone, but because it is not about you any less than
-        anyone else. It was made to a people, and you are in it.</p>
-      </div>
-    </div>
+      </section>`).join("")}
+    <p class="gloss" style="border-top:0;padding-top:0;margin-top:0">Read one aloud. Then read it
+    again with your own name in it where the text allows${prefs.name
+      ? ` — <em>I have loved you, ${esc(prefs.name)}, with an everlasting love.</em>`
+      : " — you can set your name in settings and the app will offer that reading."}
+    Not because the promise is about you alone, but because it is not about you any less than
+    anyone else. It was made to a people, and you are in it.</p>
+    ${credit()}
   </div>`;
+  return [html, VOICE.flatMap(g => g.items.map(it => it.ref))];
 }
 
 function viewTheme(){
-  return `
+  const html = `
   <div class="fade">
     <h2 class="head">When…</h2>
     <p class="standfirst">For the days when the reading isn’t what you need. Find the line that
     matches where you actually are, and read there instead.</p>
     ${THEMES.map(th => `
-      <div class="entry">
-        <div class="margin"><div class="rubric">${esc(th.t)}</div></div>
-        <div class="body">
-          ${th.items.map(it => `
-            <blockquote style="margin-bottom:.5rem">${body(it.s)}</blockquote>
-            <p class="note" style="margin:0 0 .35rem">${esc(it.ref)}</p>
-            <div style="margin:0 0 1.5rem">${saveBtn(it.key)}</div>`).join("")}
-          <p class="also">Also: ${esc(th.also)}</p>
-        </div>
-      </div>`).join("")}
+      <section class="group">
+        <span class="rubric">${esc(th.t)}</span>
+        <div class="stack">${th.items.map(it => card(it)).join("")}</div>
+        <p class="also">Also: ${esc(th.also)}</p>
+      </section>`).join("")}
+    ${credit()}
   </div>`;
+  return [html, THEMES.flatMap(t => t.items.map(it => it.ref))];
 }
 
 function viewSaved(){
   const items = [...saved].map(k => registry.get(k)).filter(Boolean);
   if(!items.length){
-    return `<div class="fade">
+    return [`<div class="fade">
       <h2 class="head">Saved</h2>
       <div class="empty">
         ${icon("i-bookmark")}
         Nothing saved yet. Tap the bookmark on any passage and it will wait for you here.
       </div>
-    </div>`;
+    </div>`, []];
   }
-  return `
+  const html = `
   <div class="fade">
     <h2 class="head">Saved</h2>
     <p class="standfirst">${items.length} passage${items.length === 1 ? "" : "s"} you kept.
     They stay on this device.</p>
-    ${items.map(p => `
-      <div class="entry">
-        <div class="margin"><div class="cite">${esc(p.ref)}</div></div>
-        <div class="body">
-          <blockquote${p.spoken ? ' class="spoken"' : ""}>${body(p.s)}${p.spoken ? "”" : ""}</blockquote>
-          <div class="controls" style="margin-top:.9rem;padding-top:.9rem">
-            <button class="pill on" data-save="${p.k}">${icon("i-bookmark-fill")}Saved</button>
-            <button class="pill" data-share="${p.k}">${icon("i-share")}Share</button>
-          </div>
-        </div>
-      </div>`).join("")}
+    <div class="stack">${items.map(p => card(p, {k:p.k})).join("")}</div>
+    ${credit()}
   </div>`;
+  return [html, items.map(p => p.ref)];
 }
 
 const VIEWS = {today:viewToday, all:viewAll, voice:viewVoice, theme:viewTheme, saved:viewSaved};
 
 function paint(scroll){
-  stage.innerHTML = VIEWS[view]();
+  usedEsv = usedWeb = false;
+  const [html, refs] = VIEWS[view]();
+  stage.innerHTML = html;
   document.querySelectorAll("nav.tabs button").forEach(b =>
     b.setAttribute("aria-selected", String(b.dataset.view === view)));
   if(scroll) window.scrollTo(0, 0);
+  if(esv.on() && refs.length) esv.fill(refs);
 }
 
 /* ---------------- install prompt ---------------- */
@@ -355,12 +489,49 @@ window.addEventListener("appinstalled", () => {
 
 /* ---------------- settings sheet ---------------- */
 
+function esvStatus(){
+  if(!esv.key()) return `<p class="status">No key yet, so the app stays on the World English
+    Bible. A key is free for personal use.</p>`;
+  if(esv.failed === "key") return `<p class="status bad">That key was not accepted. Check it
+    on api.esv.org and paste it again.</p>`;
+  if(esv.failed === "network") return `<p class="status bad">Couldn’t reach the ESV API. Passages
+    already downloaded still work; the rest show the World English Bible.</p>`;
+  return `<p class="status">${esv.cachedCount()} of ${esv.totalCount()} passages downloaded and
+    available offline.</p>`;
+}
+
 function openSettings(){
   const wrap = document.createElement("div");
   wrap.className = "sheet-scrim";
   wrap.innerHTML = `
     <div class="sheet" role="dialog" aria-modal="true" aria-label="Settings">
       <h2>Settings</h2>
+
+      <div class="field">
+        <label>Translation</label>
+        <div class="choices" id="s-bible">
+          <button data-bible="web" aria-pressed="${prefs.bible === "web"}">World English</button>
+          <button data-bible="esv" aria-pressed="${prefs.bible === "esv"}">ESV</button>
+        </div>
+        <p class="help">The World English Bible is public domain, so it ships inside the app and
+        works offline straight away. The ESV is licensed: Crossway lets it be read through their
+        own API using a key that belongs to you, so the app fetches it as you read rather than
+        carrying a copy.</p>
+      </div>
+
+      <div class="field" id="s-esv-field"${prefs.bible === "esv" ? "" : " hidden"}>
+        <label for="s-esvkey">Your ESV API key</label>
+        <p class="help">Free for personal use from
+        <a href="https://api.esv.org/" target="_blank" rel="noopener">api.esv.org</a> — create an
+        account, add an application, and copy the key it gives you. It is stored only on this
+        device and sent only to Crossway.</p>
+        <input type="password" id="s-esvkey" value="${esc(esv.key())}"
+               placeholder="Paste your key" autocomplete="off" spellcheck="false">
+        <div id="s-esv-status">${esvStatus()}</div>
+        <div class="choices" style="margin-top:.6rem">
+          <button data-esv-fetch>Download all for offline</button>
+        </div>
+      </div>
 
       <div class="field">
         <label for="s-name">Your name</label>
@@ -391,27 +562,57 @@ function openSettings(){
 
       <button class="close" data-close-sheet>Done</button>
 
-      <p class="note-block"><b>On the text.</b> Passages are from the World English Bible, which is
-      public domain. Where it prints <b>Yahweh</b>, most Bibles print <b>the LORD</b> — it is the
-      same name.<br><br>
-      <b>On the red.</b> Numbers, references and labels are set in red the way headings were inked
-      in old psalters; the scripture itself stays in black. A red quotation mark marks the passages
-      where God speaks in the first person.<br><br>
-      <b>On your data.</b> Everything you save and set stays on this device. Nothing is sent
-      anywhere, and there is no account.</p>
+      <p class="note-block"><b>On the red.</b> Numbers, references and labels are set in red the
+      way headings were inked in old psalters; the scripture itself stays in black. A red quotation
+      mark marks the passages where God speaks in the first person.<br><br>
+      <b>On your data.</b> Everything you save and set — your key included — stays on this device.
+      There is no account and no tracking.<br><br>
+      <b>On the text.</b> ${WEB_CREDIT}<br><br>${ESV_CREDIT}</p>
     </div>`;
 
+  const refreshStatus = () => {
+    const el = wrap.querySelector("#s-esv-status");
+    if(el) el.innerHTML = esvStatus();
+  };
+
   const close = () => {
-    const v = wrap.querySelector("#s-name").value.trim().slice(0, 40);
-    if(v !== prefs.name){ prefs.name = v; store.set("p.name", v); }
+    const n = wrap.querySelector("#s-name").value.trim().slice(0, 40);
+    if(n !== prefs.name){ prefs.name = n; store.set("p.name", n); }
+    const k = wrap.querySelector("#s-esvkey").value.trim();
+    if(k !== esv.key()){ esv.setKey(k); esv.failed = false; esv.tried.clear(); }
     wrap.remove();
     document.removeEventListener("keydown", onKey);
     paint(false);
   };
   const onKey = e => { if(e.key === "Escape") close(); };
 
-  wrap.addEventListener("click", e => {
+  wrap.addEventListener("click", async e => {
     if(e.target === wrap || e.target.closest("[data-close-sheet]")) return close();
+
+    const bi = e.target.closest("[data-bible]");
+    if(bi){
+      prefs.bible = bi.dataset.bible;
+      store.set("p.bible", prefs.bible);
+      wrap.querySelectorAll("#s-bible button").forEach(b =>
+        b.setAttribute("aria-pressed", String(b === bi)));
+      wrap.querySelector("#s-esv-field").hidden = prefs.bible !== "esv";
+      refreshStatus();
+      return;
+    }
+
+    if(e.target.closest("[data-esv-fetch]")){
+      const k = wrap.querySelector("#s-esvkey").value.trim();
+      if(k !== esv.key()){ esv.setKey(k); esv.failed = false; esv.tried.clear(); }
+      if(!esv.key()){ toast("Paste your ESV key first"); return; }
+      const btn = e.target.closest("[data-esv-fetch]");
+      btn.disabled = true;
+      const ok = await esv.fillAll((done, total) => { btn.textContent = `${done} / ${total}…`; });
+      btn.disabled = false;
+      btn.textContent = "Download all for offline";
+      refreshStatus();
+      toast(ok ? "Downloaded" : "Couldn’t finish — check the key");
+      return;
+    }
 
     const sc = e.target.closest("[data-scale]");
     if(sc){
@@ -434,7 +635,6 @@ function openSettings(){
 
   document.addEventListener("keydown", onKey);
   document.body.appendChild(wrap);
-  wrap.querySelector("#s-name").focus({preventScroll:true});
 }
 
 /* ---------------- events ---------------- */

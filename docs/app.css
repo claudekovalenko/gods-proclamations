@@ -6,6 +6,10 @@
    references, labels, rules — in rubric red, the way headings were
    inked in old service books. The red never touches the scripture
    itself, only the things that point to it.
+
+   Today is an open spread. Everywhere else, one passage is one card:
+   reference, text and actions held together in a single bordered
+   block rather than stacked loose down the page.
    --------------------------------------------------------------- */
 
 :root{
@@ -19,6 +23,7 @@
   --rule-faint:#DFE2E9;
   --rubric:#A22B36;
   --rubric-soft:#C25E67;
+  --rubric-wash:#F3E4E6;
   --scrim:rgba(23,26,40,.45);
 
   --f-text:"Newsreader", ui-serif, Georgia, "Times New Roman", serif;
@@ -41,6 +46,7 @@
     --rule-faint:#232636;
     --rubric:#E0757E;
     --rubric-soft:#B4646C;
+    --rubric-wash:#2E2029;
     --scrim:rgba(0,0,0,.62);
     color-scheme:dark;
   }
@@ -56,6 +62,7 @@
   --rule-faint:#232636;
   --rubric:#E0757E;
   --rubric-soft:#B4646C;
+  --rubric-wash:#2E2029;
   --scrim:rgba(0,0,0,.62);
   color-scheme:dark;
 }
@@ -76,6 +83,7 @@ body{
 :focus-visible{outline:2px solid var(--rubric);outline-offset:3px;border-radius:3px}
 [hidden]{display:none !important}
 button{font:inherit;color:inherit}
+a{color:var(--rubric)}
 
 /* ---------------- masthead ---------------- */
 .masthead{
@@ -93,7 +101,6 @@ button{font:inherit;color:inherit}
   font-size:1.02rem;font-weight:400;letter-spacing:-.005em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.masthead h1 em{font-style:italic;color:var(--rubric)}
 .icon-btn{
   appearance:none;background:none;border:0;cursor:pointer;
   width:2.4rem;height:2.4rem;flex:none;
@@ -106,10 +113,10 @@ button{font:inherit;color:inherit}
 /* ---------------- shell ---------------- */
 main{
   max-width:44rem;margin:0 auto;
-  padding:1.9rem 1.15rem calc(var(--bar) + 2.5rem);
+  padding:1.75rem 1.15rem calc(var(--bar) + 2.5rem);
 }
 @media (min-width:820px){
-  main{padding-top:2.6rem;padding-bottom:5rem}
+  main{padding-top:2.4rem;padding-bottom:5rem}
 }
 
 /* ---------------- bottom tab bar ---------------- */
@@ -131,6 +138,7 @@ main{
   .masthead{background:color-mix(in srgb, var(--paper) 88%, transparent)}
   .tabs{background:color-mix(in srgb, var(--paper) 92%, transparent)}
 }
+
 .tabs button{
   appearance:none;background:none;border:0;cursor:pointer;
   flex:1;min-width:0;
@@ -160,7 +168,76 @@ main{
   :root{--bar:0px}
 }
 
-/* ---------------- the ruled page ---------------- */
+/* ---------------- section headers ---------------- */
+h2.head{
+  font-weight:300;font-style:italic;font-size:1.85rem;letter-spacing:-.015em;
+  margin:0 0 .45rem;text-wrap:balance;
+}
+p.standfirst{
+  font-size:1.01rem;line-height:1.62;color:var(--ink-soft);
+  margin:0 0 1.9rem;text-wrap:pretty;
+}
+.rubric{
+  font-family:var(--f-util);
+  font-size:.66rem;font-weight:600;text-transform:uppercase;letter-spacing:.14em;
+  color:var(--rubric);
+}
+
+/* a labelled group of cards */
+.group{margin:0 0 1.75rem}
+.group > .rubric{
+  display:flex;align-items:center;gap:.7rem;
+  margin:0 0 .7rem;
+}
+.group > .rubric::after{
+  content:"";flex:1;height:1px;background:var(--rule);
+}
+.stack{display:grid;gap:.6rem}
+
+/* ---------------- the card ---------------- */
+.card{
+  background:var(--leaf);
+  border:1px solid var(--rule-faint);
+  border-radius:.7rem;
+  padding:.95rem 1.05rem 1rem;
+}
+.card-head{
+  display:flex;align-items:center;gap:.55rem;
+  margin:0 0 .55rem;
+}
+.card-ref{
+  font-family:var(--f-util);font-size:.72rem;font-weight:600;
+  letter-spacing:.03em;color:var(--rubric);
+  font-variant-numeric:tabular-nums;
+}
+.card-num{
+  font-family:var(--f-util);font-size:.64rem;font-weight:600;
+  letter-spacing:.06em;color:var(--rubric);
+  background:var(--rubric-wash);
+  border-radius:.3rem;padding:.16rem .34rem;
+  font-variant-numeric:tabular-nums;flex:none;
+}
+.card-tag{
+  font-family:var(--f-util);font-size:.6rem;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;
+  color:var(--rubric-soft);
+  border:1px solid var(--rule);border-radius:999px;
+  padding:.12rem .42rem;flex:none;
+}
+.card-head .icon-btn{margin-left:auto;width:1.9rem;height:1.9rem}
+.card-head .icon-btn svg{width:1rem;height:1rem}
+.card-text{
+  margin:0;
+  font-size:calc(1.13rem * var(--scale));font-weight:300;line-height:1.52;
+  text-wrap:pretty;
+}
+.card-note{
+  font-family:var(--f-util);font-size:.72rem;line-height:1.5;
+  color:var(--ink-faint);margin:.55rem 0 0;
+}
+.card.pending .card-text{opacity:.55}
+
+/* ---------------- Today: the open spread ---------------- */
 .spread{display:grid;grid-template-columns:1fr;gap:.55rem 2.5rem}
 @media (min-width:700px){
   .spread{grid-template-columns:8.5rem minmax(0,1fr)}
@@ -175,15 +252,10 @@ main{
   display:flex;flex-direction:column;gap:.3rem;
   padding-top:.4rem;
 }
-.rubric{
-  font-size:.66rem;font-weight:600;text-transform:uppercase;letter-spacing:.14em;
-  color:var(--rubric);
-}
 .cite{font-size:.78rem;color:var(--ink-soft);font-variant-numeric:tabular-nums}
 .cite.quiet{color:var(--rubric-soft)}
 .column{min-width:0}
 
-/* ---------------- scripture ---------------- */
 .scripture{
   font-size:calc(clamp(1.42rem, 1.06rem + 1.55vw, 1.95rem) * var(--scale));
   font-weight:300;line-height:1.42;letter-spacing:-.011em;
@@ -197,8 +269,8 @@ main{
   font-size:1.5em;line-height:1;color:var(--rubric-soft);
 }
 @media (min-width:700px){
-  .spoken{padding-left:0}
-  .spoken::before{left:-.62em}
+  .spread .spoken{padding-left:0}
+  .spread .spoken::before{left:-.62em}
 }
 .title{
   font-family:var(--f-util);font-size:.8rem;font-weight:500;
@@ -208,33 +280,46 @@ main{
   font-style:italic;
   font-size:calc(1.02rem * var(--scale));line-height:1.62;color:var(--ink-soft);
   border-top:1px solid var(--rule-faint);
-  margin:1.9rem 0 0;padding-top:1.1rem;
+  margin:1.7rem 0 0;padding-top:1.05rem;
   text-wrap:pretty;
 }
 .aloud{
-  margin:1.5rem 0 0;padding:.95rem 1.1rem;
-  background:var(--leaf);border:1px solid var(--rule-faint);border-radius:.5rem;
+  margin:1.4rem 0 0;padding:.9rem 1.05rem;
+  background:var(--leaf);border:1px solid var(--rule-faint);border-radius:.7rem;
 }
-.aloud .rubric{margin-bottom:.4rem}
+.aloud .rubric{display:block;margin-bottom:.4rem}
 .aloud p{
   margin:0;font-size:calc(1.12rem * var(--scale));font-weight:300;line-height:1.45;
   text-wrap:pretty;
 }
 
-/* ---------------- day controls ---------------- */
+/* one consolidated row of actions */
 .controls{
-  display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;
-  margin-top:2.4rem;padding-top:1.15rem;border-top:1px solid var(--rule);
+  display:flex;align-items:center;gap:.4rem;
+  margin-top:2.1rem;padding-top:1rem;border-top:1px solid var(--rule);
 }
 .controls .spacer{flex:1}
+.stepper{
+  display:inline-flex;border:1px solid var(--rule);border-radius:999px;
+  overflow:hidden;background:var(--leaf);
+}
+.stepper button{
+  appearance:none;background:none;border:0;cursor:pointer;
+  color:var(--ink-soft);padding:.42rem .7rem;
+  display:grid;place-items:center;
+}
+.stepper button + button{border-left:1px solid var(--rule)}
+.stepper button svg{width:1rem;height:1rem;display:block}
+.stepper button:hover:not(:disabled){color:var(--ink);background:var(--sunk)}
+.stepper button:disabled{opacity:.3;cursor:default}
 .pill{
   appearance:none;cursor:pointer;
   background:var(--leaf);border:1px solid var(--rule);border-radius:999px;
   color:var(--ink-soft);
   font-family:var(--f-util);font-size:.7rem;font-weight:600;
-  letter-spacing:.07em;text-transform:uppercase;
-  padding:.52rem .9rem;
-  display:inline-flex;align-items:center;gap:.4rem;
+  letter-spacing:.06em;text-transform:uppercase;
+  padding:.46rem .85rem;
+  display:inline-flex;align-items:center;gap:.38rem;
 }
 .pill svg{width:.9rem;height:.9rem}
 .pill:hover{color:var(--ink);border-color:var(--ink-faint)}
@@ -243,42 +328,18 @@ main{
 .linkbtn{
   appearance:none;background:none;border:0;cursor:pointer;
   font-family:var(--f-util);font-size:.7rem;font-weight:600;
-  letter-spacing:.07em;text-transform:uppercase;color:var(--rubric);
-  padding:.52rem .3rem;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--rubric);
+  padding:.5rem .3rem;
 }
 
-/* ---------------- list views ---------------- */
-h2.head{
-  font-weight:300;font-style:italic;font-size:1.85rem;letter-spacing:-.015em;
-  margin:0 0 .45rem;text-wrap:balance;
-}
-p.standfirst{
-  font-size:1.01rem;line-height:1.62;color:var(--ink-soft);
-  margin:0 0 2.4rem;text-wrap:pretty;
-}
-.entry{
-  display:grid;grid-template-columns:1fr;gap:.45rem 2.5rem;
-  padding:1.7rem 0;border-top:1px solid var(--rule-faint);
-}
-@media (min-width:700px){ .entry{grid-template-columns:8.5rem minmax(0,1fr)} }
-.entry .body{min-width:0}
-.entry blockquote{
-  margin:0;font-size:calc(1.14rem * var(--scale));font-weight:300;line-height:1.52;
-  text-wrap:pretty;
-}
-.entry .note{
-  font-family:var(--f-util);font-size:.73rem;color:var(--ink-soft);margin:.6rem 0 0;
-}
-.also{font-family:var(--f-util);font-size:.74rem;color:var(--ink-faint);margin:.85rem 0 0}
-
-/* index of days */
+/* ---------------- index of the thirty ---------------- */
 .index{display:grid;grid-template-columns:1fr;border-top:1px solid var(--rule-faint)}
 @media (min-width:640px){ .index{grid-template-columns:1fr 1fr;column-gap:2rem} }
 .index button{
   appearance:none;background:none;border:0;border-bottom:1px solid var(--rule-faint);
   cursor:pointer;text-align:left;width:100%;
   display:grid;grid-template-columns:2.1rem 1fr auto;align-items:baseline;gap:.5rem;
-  padding:.8rem .1rem;
+  padding:.75rem .1rem;
 }
 .index .n{
   font-family:var(--f-util);font-size:.66rem;font-weight:600;letter-spacing:.05em;
@@ -291,7 +352,7 @@ p.standfirst{
 
 /* segmented control */
 .segmented{
-  display:inline-flex;gap:.15rem;padding:.2rem;margin:0 0 2.2rem;
+  display:inline-flex;gap:.15rem;padding:.2rem;margin:0 0 1.6rem;
   background:var(--sunk);border-radius:999px;
 }
 .segmented button{
@@ -303,8 +364,8 @@ p.standfirst{
 .segmented button[aria-selected="true"]{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
 
 /* method list */
-.method{border-top:1px solid var(--rule);margin-top:2.6rem;padding-top:1.6rem}
-.method ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.95rem;counter-reset:m}
+.method{border-top:1px solid var(--rule);margin-top:2rem;padding-top:1.5rem}
+.method ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.9rem;counter-reset:m}
 .method li{
   display:grid;grid-template-columns:1.5rem 1fr;gap:.8rem;counter-increment:m;
   font-size:1rem;line-height:1.6;color:var(--ink-soft);
@@ -316,12 +377,26 @@ p.standfirst{
 }
 .method li b{color:var(--ink);font-weight:600}
 
+.also{
+  font-family:var(--f-util);font-size:.73rem;color:var(--ink-faint);
+  margin:.7rem 0 0;padding-left:.15rem;
+}
+
 /* empty state */
 .empty{
-  text-align:center;padding:3.5rem 1rem;color:var(--ink-faint);
+  text-align:center;padding:3.2rem 1rem;color:var(--ink-faint);
   font-style:italic;font-size:1.05rem;line-height:1.6;
 }
 .empty svg{width:1.6rem;height:1.6rem;display:block;margin:0 auto 1rem;color:var(--rule)}
+
+/* translation credit, shown wherever licensed text is displayed */
+.credit{
+  font-family:var(--f-util);font-size:.68rem;line-height:1.6;
+  color:var(--ink-faint);
+  border-top:1px solid var(--rule-faint);
+  margin-top:2.2rem;padding-top:1rem;
+}
+.credit a{color:var(--ink-faint);text-underline-offset:2px}
 
 /* ---------------- settings sheet ---------------- */
 .sheet-scrim{
@@ -348,20 +423,21 @@ p.standfirst{
   letter-spacing:.14em;text-transform:uppercase;color:var(--rubric);
   margin:0 0 1.3rem;
 }
-.field{margin:0 0 1.5rem}
+.field{margin:0 0 1.4rem}
 .field > label{
   display:block;font-family:var(--f-util);font-size:.76rem;font-weight:600;
   margin:0 0 .3rem;
 }
 .field .help{
-  font-family:var(--f-util);font-size:.72rem;line-height:1.5;
-  color:var(--ink-faint);margin:.35rem 0 .55rem;
+  font-family:var(--f-util);font-size:.72rem;line-height:1.55;
+  color:var(--ink-faint);margin:.3rem 0 .5rem;
 }
-.field input[type=text]{
+.field input[type=text],.field input[type=password]{
   width:100%;font-family:var(--f-text);font-size:1.05rem;
   padding:.6rem .75rem;border-radius:.5rem;
   border:1px solid var(--rule);background:var(--leaf);color:var(--ink);
 }
+.field input[type=password]{font-family:var(--f-util);font-size:.9rem;letter-spacing:.04em}
 .choices{display:flex;gap:.3rem;flex-wrap:wrap}
 .choices button{
   appearance:none;cursor:pointer;
@@ -377,6 +453,11 @@ p.standfirst{
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]) .choices button[aria-pressed="true"]{color:#fff}
 }
+.status{
+  font-family:var(--f-util);font-size:.72rem;line-height:1.5;
+  margin:.5rem 0 0;color:var(--ink-soft);
+}
+.status.bad{color:var(--rubric)}
 .sheet .close{
   width:100%;margin-top:.4rem;
   appearance:none;cursor:pointer;
@@ -389,6 +470,7 @@ p.standfirst{
   border-top:1px solid var(--rule-faint);padding-top:1.1rem;margin-top:.3rem;
 }
 .note-block b{color:var(--ink-soft);font-weight:600}
+.note-block a{color:var(--ink-soft)}
 
 /* toast */
 .toast{
@@ -400,13 +482,14 @@ p.standfirst{
   padding:.6rem 1rem;border-radius:999px;
   box-shadow:0 8px 24px -10px rgba(0,0,0,.5);
   animation:rise .2s ease;
+  max-width:calc(100vw - 2rem);text-align:center;
 }
 
 /* install hint */
 .install{
   display:flex;align-items:center;gap:.8rem;
-  background:var(--leaf);border:1px solid var(--rule-faint);border-radius:.6rem;
-  padding:.85rem 1rem;margin:0 0 2rem;
+  background:var(--leaf);border:1px solid var(--rule-faint);border-radius:.7rem;
+  padding:.85rem 1rem;margin:0 0 1.6rem;
   font-family:var(--f-util);font-size:.78rem;line-height:1.5;color:var(--ink-soft);
 }
 .install .pill{flex:none}

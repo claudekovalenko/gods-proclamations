@@ -21,12 +21,34 @@ signal.
   forgotten, worn out, drifted.
 - **Saved** — whatever you bookmarked.
 
-Settings hold your name (optional — where a passage allows it the app offers a
-way to read it aloud with your name in it, alongside the untouched text), text
-size, and light or dark.
+Settings hold the translation (below), your name (optional — where a passage
+allows it the app offers a way to read it aloud with your name in it, alongside
+the untouched text), text size, and light or dark.
 
-Everything you save and set stays on your device. There is no account, no
-tracking, and nothing is sent anywhere.
+Everything you save and set stays on your device. There is no account and no
+tracking.
+
+### Translations
+
+**World English Bible** is the default. It is public domain, so it ships inside
+the app and works offline from the first launch.
+
+**ESV** is available, but not by bundling it. Crossway allows the ESV to be
+quoted without a licence only where the quotations stay under 25% of the work —
+and this app is essentially nothing but scripture, so shipping ESV text in it
+would need written permission. The sanctioned route is Crossway's own
+[ESV API](https://api.esv.org/), called with a key belonging to the reader.
+
+So: choose ESV in settings and paste your own key (free for personal use from
+api.esv.org — create an account, add an application, copy the key). The app then
+fetches passages as you read them and keeps them on your device, so they work
+offline afterwards. "Download all for offline" fetches the lot in one go. No key
+is committed to this repository or bundled in the app — Crossway's terms forbid
+publishing one, and each reader uses their own.
+
+Any passage that has not been fetched falls back to the World English Bible, and
+the credit at the foot of each screen names whichever translation is actually on
+screen.
 
 ### Installing
 
@@ -65,9 +87,9 @@ enough to finish. But it isn't a schedule to fall behind on.
 
 ## A note on translation
 
-Passages are quoted from the **World English Bible (WEB)**, a public-domain
+The Markdown files quote the **World English Bible (WEB)**, a public-domain
 modern-English translation, so this collection can be freely copied, printed,
-and shared.
+and shared. (The app can also show the ESV — see *Translations* above.)
 
 The WEB renders the covenant name of God as **"Yahweh"** where most English
 Bibles print **"the LORD"** in small capitals. If that's unfamiliar, read "the
@@ -82,8 +104,8 @@ not a replacement.
 docs/                 the app — this directory is what GitHub Pages serves
   index.html          shell and icon sprite
   app.css             styles, both themes
-  app.js              views, state, settings, install prompt
-  data.js             every passage in the app
+  app.js              views, cards, state, settings, ESV fetching, install prompt
+  data.js             every passage in the app, in the World English Bible
   sw.js               service worker: offline shell + font cache
   manifest.webmanifest
   icons/              generated — see tools/make-icons.sh
