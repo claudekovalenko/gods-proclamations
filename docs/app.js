@@ -125,6 +125,38 @@ const esv = {
   /* Returns ESV text if it is already on the device, otherwise null. */
   text(ref){ return esv.on() ? (esv.cache[ref] || null) : null; },
 
+  /* Why the reader is looking at the World English Bible when they asked for
+     the ESV. Silence here was the whole problem: the app simply showed the
+     fallback and said nothing. */
+  reason(){
+    if(prefs.bible !== "esv") return null;
+    if(!esv.key()) return {
+      short: "The ESV needs a key of your own",
+      long: "Crossway serve the ESV from their own API, and it is free for personal " +
+            "use — create a key at api.esv.org and paste it into settings."
+    };
+    if(esv.failed === "key") return {
+      short: "That ESV key was rejected",
+      long: "Check it on api.esv.org and paste it again."
+    };
+    if(esv.failed === "cors") return {
+      short: "This page cannot reach the ESV API",
+      long: "Crossway's API is built to be called from a web server, not from a page " +
+            "in your browser, so the browser blocks the request. Getting the ESV here " +
+            "needs a small relay in between."
+    };
+    if(esv.failed === "network") return {
+      short: "Couldn’t reach the ESV API",
+      long: "Passages already downloaded still show; the rest fall back."
+    };
+    if(esv.failed === "http") return {
+      short: "The ESV API returned an error",
+      long: "It may be rate limited — 5,000 requests a day — or briefly down."
+    };
+    if(esv.pending.size) return {short: "Fetching from the ESV…", long: ""};
+    return null;
+  },
+
   async fetchOne(ref){
     if(esv.cache[ref] || esv.pending.has(ref)) return false;
     esv.pending.add(ref);
@@ -157,7 +189,10 @@ const esv = {
       esv.failed = false;
       return true;
     }catch(e){
-      esv.failed = "network";
+      /* A blocked cross-origin request and a dead connection both surface as a
+         bare TypeError, so tell them apart by whether anything else is
+         reachable at all. */
+      esv.failed = navigator.onLine === false ? "network" : "cors";
       return false;
     }finally{
       esv.pending.delete(ref);
@@ -331,8 +366,21 @@ function viewRead(){
          <p>“${body(p.aloud.replace("{name}", prefs.name))}”</p>
        </div>` : "";
 
+  /* asked for the ESV, looking at the WEB — say why, here, where they are */
+  const why = t.esv ? null : esv.reason();
+  const notice = why ? `
+    <div class="notice">
+      <div>
+        <b>${esc(why.short)}</b>
+        ${why.long ? `<span>${esc(why.long)}</span>` : ""}
+        <span>Showing the World English Bible meanwhile.</span>
+      </div>
+      <button class="pill" data-settings>Settings</button>
+    </div>` : "";
+
   const html = `
   ${installBanner()}
+  ${notice}
   <article class="spread fade">
     <div class="margin">
       ${isToday ? '<span class="rubric">Today’s</span>' : ""}
@@ -562,6 +610,7 @@ function openSettings(){
                placeholder="Paste your key" autocomplete="off" spellcheck="false">
         <div id="s-esv-status">${esvStatus()}</div>
         <div class="choices" style="margin-top:.6rem">
+          <button data-esv-test>Test my key</button>
           <button data-esv-fetch>Download all for offline</button>
         </div>
       </div>
@@ -633,6 +682,25 @@ function openSettings(){
       return;
     }
 
+    if(e.target.closest("[data-esv-test]")){
+      const k = wrap.querySelector("#s-esvkey").value.trim();
+      if(k !== esv.key()){ esv.setKey(k); esv.failed = false; esv.tried.clear(); }
+      if(!esv.key()){ toast("Paste your ESV key first"); return; }
+      const btn = e.target.closest("[data-esv-test]");
+      btn.disabled = true; btn.textContent = "Testing…";
+      const probe = "John 3:16";
+      delete esv.cache[probe];
+      esv.tried.delete(probe);
+      const ok = await esv.fetchOne(probe);
+      btn.disabled = false; btn.textContent = "Test my key";
+      const why = esv.reason();
+      const el = wrap.querySelector("#s-esv-status");
+      el.innerHTML = ok
+        ? '<p class="status">Working — the ESV came back.</p>'
+        : `<p class="status bad">${esc(why ? why.short + ". " + why.long : "Didn’t work.")}</p>`;
+      return;
+    }
+
     if(e.target.closest("[data-esv-fetch]")){
       const k = wrap.querySelector("#s-esvkey").value.trim();
       if(k !== esv.key()){ esv.setKey(k); esv.failed = false; esv.tried.clear(); }
@@ -676,7 +744,9 @@ document.addEventListener("click", e => {
   const tab = e.target.closest("nav.tabs button");
   if(tab){ view = tab.dataset.view; paint(true); return; }
 
-  if(e.target.closest("#settings-btn")){ openSettings(); return; }
+  if(e.target.closest("#settings-btn") || e.target.closest("[data-settings]")){
+    openSettings(); return;
+  }
 
   const seg = e.target.closest("[data-read]");
   if(seg){ readTab = seg.dataset.read; paint(true); return; }

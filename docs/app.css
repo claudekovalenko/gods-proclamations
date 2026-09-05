@@ -486,6 +486,23 @@ p.standfirst{
   max-width:calc(100vw - 2rem);text-align:center;
 }
 
+/* why you are not seeing the translation you chose */
+.notice{
+  display:flex;align-items:flex-start;gap:.85rem;
+  background:var(--rubric-wash);
+  border:1px solid var(--rubric-soft);
+  border-radius:.7rem;
+  padding:.85rem 1rem;margin:0 0 1.6rem;
+}
+.notice > div{display:grid;gap:.25rem;flex:1;min-width:0}
+.notice b{
+  font-family:var(--f-util);font-size:.76rem;font-weight:600;color:var(--rubric);
+}
+.notice span{
+  font-family:var(--f-util);font-size:.73rem;line-height:1.5;color:var(--ink-soft);
+}
+.notice .pill{flex:none;background:var(--paper)}
+
 /* install hint */
 .install{
   display:flex;align-items:center;gap:.8rem;

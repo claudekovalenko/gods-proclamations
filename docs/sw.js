@@ -4,7 +4,7 @@
    they are fetched, so the second launch is fully offline even though the
    faces come from another origin. Bump SHELL when any shell file changes. */
 
-const SHELL = "proclamations-shell-v4";
+const SHELL = "proclamations-shell-v5";
 const FONTS = "proclamations-fonts-v1";
 
 const PRECACHE = [
