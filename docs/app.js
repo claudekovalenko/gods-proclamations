@@ -76,6 +76,25 @@ VOICE.forEach(g => g.items.forEach(it => { it.key = enrol({...it, spoken:true});
 THEMES.forEach(t => t.items.forEach(it => { it.key = enrol(it); }));
 MEMORY.forEach(m => { m.key = enrol(m); });
 
+/* One sequence through everything, for the reader to cycle. The thirty come
+   first — they are the curated spine, and they carry a title and a line of
+   comment — then every other passage that is not already among them, each
+   tagged with where in the app it otherwise lives. */
+const ALL = [];
+{
+  const seen = new Set();
+  const add = (p, extra) => {
+    if(seen.has(p.key)) return;
+    seen.add(p.key);
+    ALL.push({...p, ...extra});
+  };
+  DAYS.forEach((d, i) => add(d, {day:i + 1}));
+  VOICE.forEach(g => g.items.forEach(it =>
+    add({...it, spoken:true}, {from:`In his own words · ${g.group}`})));
+  THEMES.forEach(t => t.items.forEach(it => add(it, {from:`When… ${t.t}`})));
+  MEMORY.forEach(m => add(m, {from:"Worth memorizing"}));
+}
+
 let saved = new Set(store.json("p.saved", []));
 const isSaved = k => saved.has(k);
 function toggleSave(k){
@@ -273,8 +292,9 @@ function todayStamp(){
   const d = new Date();
   return Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / DAY_MS);
 }
-/* Day 1 is the first day the app is opened; it advances with the calendar and
-   wraps round at thirty. */
+/* Today's passage is one of the thirty, picked by the calendar from the day the
+   app was first opened. It is a highlight now, not a gate: the reader is free
+   to move through the whole collection. */
 function autoIndex(){
   const now = todayStamp();
   let start = parseInt(store.get("p.start", ""), 10);
@@ -284,56 +304,69 @@ function autoIndex(){
 
 /* ---------------- state ---------------- */
 
-/* home-screen shortcuts arrive as ?v=today / ?v=saved */
-const wanted = new URLSearchParams(location.search).get("v");
-let view = ["today", "all", "voice", "theme", "saved"].includes(wanted) ? wanted : "today";
-let dayIdx = autoIndex();
+/* home-screen shortcuts arrive as ?v=read / ?v=saved ("today" still works,
+   from shortcuts pinned before the reader was renamed) */
+const wanted = (new URLSearchParams(location.search).get("v") || "").replace("today", "read");
+let view = ["read", "all", "voice", "theme", "saved"].includes(wanted) ? wanted : "read";
+let idx = autoIndex();
 let readTab = "thirty";
+
+/* the reader wraps rather than stopping at either end */
+function step(n){
+  idx = ((idx + n) % ALL.length + ALL.length) % ALL.length;
+  paint(false);
+}
 
 /* ---------------- views ---------------- */
 /* each returns [html, refs it needs] */
 
-function viewToday(){
-  const d = DAYS[dayIdx];
+function viewRead(){
+  const p = ALL[idx];
   const auto = autoIndex();
-  const t = textFor(d);
-  const aloud = d.aloud && prefs.name
+  const isToday = idx === auto;
+  const t = textFor(p);
+  const aloud = p.aloud && prefs.name
     ? `<div class="aloud">
          <span class="rubric">Say it aloud</span>
-         <p>“${body(d.aloud.replace("{name}", prefs.name))}”</p>
+         <p>“${body(p.aloud.replace("{name}", prefs.name))}”</p>
        </div>` : "";
 
   const html = `
   ${installBanner()}
   <article class="spread fade">
     <div class="margin">
-      <span class="rubric">Day ${dayIdx + 1} of ${DAYS.length}</span>
-      <span class="cite">${esc(d.ref)} · ${t.esv ? "ESV" : "WEB"}</span>
-      ${d.spoken ? '<span class="cite quiet">God speaking</span>' : ""}
+      ${isToday ? '<span class="rubric">Today’s</span>' : ""}
+      <span class="cite">${esc(p.ref)} · ${t.esv ? "ESV" : "WEB"}</span>
+      ${p.spoken ? '<span class="cite quiet">God speaking</span>' : ""}
+      <span class="cite tally">${idx + 1} of ${ALL.length}${
+        p.day ? ` · Day ${p.day}` : p.from ? ` · ${esc(p.from)}` : ""}</span>
     </div>
     <div class="column">
-      <p class="scripture${d.spoken ? " spoken" : ""}">${body(t.s)}${d.spoken ? "”" : ""}</p>
-      <p class="title">${esc(d.t)}</p>
+      <p class="scripture${p.spoken ? " spoken" : ""}">${body(t.s)}${p.spoken ? "”" : ""}</p>
+      ${p.t ? `<p class="title">${esc(p.t)}</p>` : ""}
       ${aloud}
-      <p class="gloss">${body(d.g)}</p>
+      ${p.g ? `<p class="gloss">${body(p.g)}</p>` : ""}
 
       <div class="controls">
         <span class="stepper">
-          <button data-step="-1" ${dayIdx === 0 ? "disabled" : ""} aria-label="Previous day">
-            ${icon("i-left")}</button>
-          <button data-step="1" ${dayIdx === DAYS.length - 1 ? "disabled" : ""} aria-label="Next day">
-            ${icon("i-right")}</button>
+          <button data-step="-1" aria-label="Previous passage">${icon("i-left")}</button>
+          <button data-step="1" aria-label="Next passage">${icon("i-right")}</button>
         </span>
-        ${dayIdx !== auto ? '<button class="linkbtn" data-today>Today’s</button>' : ""}
+        <button class="pill" data-shuffle aria-label="Jump to a random passage">
+          ${icon("i-shuffle")}</button>
+        ${isToday ? "" : '<button class="linkbtn" data-today>Today’s</button>'}
         <span class="spacer"></span>
-        <button class="pill${isSaved(d.key) ? " on" : ""}" data-save="${d.key}">
-          ${icon(isSaved(d.key) ? "i-bookmark-fill" : "i-bookmark")}${isSaved(d.key) ? "Saved" : "Save"}</button>
-        <button class="pill" data-share="${d.key}" aria-label="Share">${icon("i-share")}</button>
+        <button class="pill${isSaved(p.key) ? " on" : ""}" data-save="${p.key}">
+          ${icon(isSaved(p.key) ? "i-bookmark-fill" : "i-bookmark")}${isSaved(p.key) ? "Saved" : "Save"}</button>
+        <button class="pill" data-share="${p.key}" aria-label="Share">${icon("i-share")}</button>
       </div>
       ${credit()}
     </div>
   </article>`;
-  return [html, [d.ref]];
+  /* prefetch the neighbours so stepping through does not stall on the network */
+  const near = [p.ref, ALL[(idx + 1) % ALL.length].ref,
+                ALL[(idx - 1 + ALL.length) % ALL.length].ref];
+  return [html, near];
 }
 
 function viewAll(){
@@ -436,7 +469,7 @@ function viewSaved(){
   return [html, items.map(p => p.ref)];
 }
 
-const VIEWS = {today:viewToday, all:viewAll, voice:viewVoice, theme:viewTheme, saved:viewSaved};
+const VIEWS = {read:viewRead, all:viewAll, voice:viewVoice, theme:viewTheme, saved:viewSaved};
 
 function paint(scroll){
   usedEsv = usedWeb = false;
@@ -480,11 +513,11 @@ function installBanner(){
 window.addEventListener("beforeinstallprompt", e => {
   e.preventDefault();
   deferredInstall = e;
-  if(view === "today") paint(false);
+  if(view === "read") paint(false);
 });
 window.addEventListener("appinstalled", () => {
   deferredInstall = null;
-  if(view === "today") paint(false);
+  if(view === "read") paint(false);
 });
 
 /* ---------------- settings sheet ---------------- */
@@ -648,15 +681,18 @@ document.addEventListener("click", e => {
   const seg = e.target.closest("[data-read]");
   if(seg){ readTab = seg.dataset.read; paint(true); return; }
 
-  const step = e.target.closest("[data-step]");
-  if(step){
-    dayIdx = Math.min(DAYS.length - 1, Math.max(0, dayIdx + Number(step.dataset.step)));
-    paint(false); return;
+  const stepBtn = e.target.closest("[data-step]");
+  if(stepBtn){ step(Number(stepBtn.dataset.step)); return; }
+
+  if(e.target.closest("[data-shuffle]")){
+    let n = idx;
+    while(n === idx && ALL.length > 1) n = Math.floor(Math.random() * ALL.length);
+    idx = n; paint(false); return;
   }
-  if(e.target.closest("[data-today]")){ dayIdx = autoIndex(); paint(false); return; }
+  if(e.target.closest("[data-today]")){ idx = autoIndex(); paint(false); return; }
 
   const goto = e.target.closest("[data-goto]");
-  if(goto){ dayIdx = Number(goto.dataset.goto); view = "today"; paint(true); return; }
+  if(goto){ idx = Number(goto.dataset.goto); view = "read"; paint(true); return; }
 
   const sv = e.target.closest("[data-save]");
   if(sv){ toggleSave(sv.dataset.save); paint(false); return; }
@@ -675,18 +711,34 @@ document.addEventListener("click", e => {
 });
 
 document.addEventListener("keydown", e => {
-  if(view !== "today" || e.metaKey || e.ctrlKey || e.altKey) return;
+  if(view !== "read" || e.metaKey || e.ctrlKey || e.altKey) return;
   if(e.target.matches("input, textarea")) return;
-  if(e.key === "ArrowLeft" && dayIdx > 0){ dayIdx--; paint(false); }
-  if(e.key === "ArrowRight" && dayIdx < DAYS.length - 1){ dayIdx++; paint(false); }
+  if(e.key === "ArrowLeft") step(-1);
+  if(e.key === "ArrowRight") step(1);
 });
 
-/* A phone left open overnight should be showing the new day when it is picked up. */
+/* swipe sideways to move through the collection on a phone */
+let touchX = 0, touchY = 0;
+stage.addEventListener("touchstart", e => {
+  if(e.touches.length !== 1) return;
+  touchX = e.touches[0].clientX; touchY = e.touches[0].clientY;
+}, {passive:true});
+stage.addEventListener("touchend", e => {
+  if(view !== "read" || !e.changedTouches.length) return;
+  const dx = e.changedTouches[0].clientX - touchX;
+  const dy = e.changedTouches[0].clientY - touchY;
+  /* clearly horizontal, so a scroll is never mistaken for a swipe */
+  if(Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.8) step(dx < 0 ? 1 : -1);
+}, {passive:true});
+
+/* A phone left open overnight lands on the new day's passage when picked up,
+   but only if it was still sitting on yesterday's. */
+let shownFor = autoIndex();
 document.addEventListener("visibilitychange", () => {
-  if(document.visibilityState === "visible" && view === "today"){
-    const auto = autoIndex();
-    if(auto !== dayIdx){ dayIdx = auto; paint(false); }
-  }
+  if(document.visibilityState !== "visible" || view !== "read") return;
+  const auto = autoIndex();
+  if(auto !== shownFor && idx === shownFor){ idx = auto; paint(false); }
+  shownFor = auto;
 });
 
 /* ---------------- go ---------------- */

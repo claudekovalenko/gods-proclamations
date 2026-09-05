@@ -7,7 +7,7 @@
    inked in old service books. The red never touches the scripture
    itself, only the things that point to it.
 
-   Today is an open spread. Everywhere else, one passage is one card:
+   The reader is an open spread. Everywhere else, one passage is one card:
    reference, text and actions held together in a single bordered
    block rather than stacked loose down the page.
    --------------------------------------------------------------- */
@@ -254,6 +254,7 @@ p.standfirst{
 }
 .cite{font-size:.78rem;color:var(--ink-soft);font-variant-numeric:tabular-nums}
 .cite.quiet{color:var(--rubric-soft)}
+.cite.tally{font-size:.7rem;color:var(--ink-faint)}
 .column{min-width:0}
 
 .scripture{

@@ -11,9 +11,12 @@ A small offline-first web app (a PWA). Open that link on your phone and add it
 to your home screen; after that it opens like any other app and works with no
 signal.
 
-- **Today** — one passage a day, advancing on its own with the calendar and
-  wrapping round at thirty. Save it, or share it.
-- **Read** — all thirty in a list, plus twelve verses worth memorizing and a
+- **Read** — one passage at a time, and you can move through the whole
+  collection freely: arrows, arrow keys, a swipe sideways on a phone, or the
+  shuffle button. It wraps at both ends, so you can keep going round. It opens
+  on today's passage, marked *Today's*, and a jump button brings you back to it
+  — but nothing is locked to the calendar.
+- **Index** — all thirty in a list, plus twelve verses worth memorizing and a
   method for actually learning them.
 - **His voice** — only the passages where God speaks of his love in the first
   person. These are the ones to read aloud.
@@ -104,7 +107,7 @@ not a replacement.
 docs/                 the app — this directory is what GitHub Pages serves
   index.html          shell and icon sprite
   app.css             styles, both themes
-  app.js              views, cards, state, settings, ESV fetching, install prompt
+  app.js              views, cards, the reader, settings, ESV fetching, install
   data.js             every passage in the app, in the World English Bible
   sw.js               service worker: offline shell + font cache
   manifest.webmanifest

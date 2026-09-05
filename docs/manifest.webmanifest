@@ -19,9 +19,9 @@
   ],
   "shortcuts": [
     {
-      "name": "Today's passage",
-      "short_name": "Today",
-      "url": "./?v=today",
+      "name": "Read a passage",
+      "short_name": "Read",
+      "url": "./?v=read",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     },
     {
