@@ -1,0 +1,12 @@
+name = "esv-relay"
+main = "esv-relay.js"
+compatibility_date = "2026-01-01"
+
+# Pages allowed to use this relay, comma separated. Add your own origin here if
+# you serve the app from somewhere else; anything not listed is refused so the
+# key's daily quota stays yours.
+[vars]
+ALLOWED_ORIGINS = "https://claudekovalenko.github.io,http://localhost:8765"
+
+# The ESV key is a secret, not a var — never put it in this file:
+#   npx wrangler secret put ESV_API_KEY

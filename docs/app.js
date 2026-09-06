@@ -108,7 +108,11 @@ function toggleSave(k){
 const esv = {
   key(){ return store.get("p.esvKey", ""); },
   setKey(v){ store.set("p.esvKey", v); },
-  on(){ return prefs.bible === "esv" && !!esv.key(); },
+  /* Preferred route: a relay holding the key server-side, because Crossway's
+     API sends no CORS headers and a browser will not read a direct response. */
+  relay(){ return store.get("p.esvRelay", "").replace(/\/+$/, ""); },
+  setRelay(v){ store.set("p.esvRelay", v); },
+  on(){ return prefs.bible === "esv" && (!!esv.relay() || !!esv.key()); },
 
   cache: store.json("esv.cache", {}),
   saveCache(){ store.set("esv.cache", JSON.stringify(esv.cache)); },
@@ -130,20 +134,27 @@ const esv = {
      fallback and said nothing. */
   reason(){
     if(prefs.bible !== "esv") return null;
-    if(!esv.key()) return {
-      short: "The ESV needs a key of your own",
-      long: "Crossway serve the ESV from their own API, and it is free for personal " +
-            "use — create a key at api.esv.org and paste it into settings."
+    if(!esv.relay() && !esv.key()) return {
+      short: "The ESV needs a relay of your own",
+      long: "Crossway serve the ESV from an API meant for web servers, so a page cannot " +
+            "call it directly. The worker/ folder in this project deploys one in two " +
+            "commands; paste its URL into settings."
     };
     if(esv.failed === "key") return {
-      short: "That ESV key was rejected",
-      long: "Check it on api.esv.org and paste it again."
+      short: esv.relay() ? "The relay's ESV key was rejected" : "That ESV key was rejected",
+      long: esv.relay()
+        ? "Check the key you gave the relay: wrangler secret put ESV_API_KEY."
+        : "Check it on api.esv.org and paste it again."
     };
-    if(esv.failed === "cors") return {
+    if(esv.failed === "cors") return esv.relay() ? {
+      short: "Couldn’t reach the relay",
+      long: "Check the URL in settings, and that the Worker is deployed and lists this " +
+            "page in ALLOWED_ORIGINS."
+    } : {
       short: "This page cannot reach the ESV API",
       long: "Crossway's API is built to be called from a web server, not from a page " +
-            "in your browser, so the browser blocks the request. Getting the ESV here " +
-            "needs a small relay in between."
+            "in your browser, so the browser blocks the request. Deploy the relay in " +
+            "the worker/ folder and paste its URL into settings."
     };
     if(esv.failed === "network") return {
       short: "Couldn’t reach the ESV API",
@@ -162,20 +173,27 @@ const esv = {
     esv.pending.add(ref);
     esv.tried.add(ref);
     try{
-      const url = ESV_ENDPOINT + "?" + new URLSearchParams({
-        q: esv.query(ref),
-        "include-passage-references": "false",
-        "include-verse-numbers": "false",
-        "include-first-verse-numbers": "false",
-        "include-footnotes": "false",
-        "include-headings": "false",
-        "include-short-copyright": "false",
-        "include-passage-horizontal-lines": "false",
-        "include-heading-horizontal-lines": "false",
-        "indent-paragraphs": "0",
-        "indent-poetry": "false"
-      });
-      const res = await fetch(url, {headers:{Authorization: "Token " + esv.key()}});
+      /* Through the relay the key stays on the server and the passage options
+         are its business; direct, we must ask for the bare prose ourselves. */
+      const viaRelay = !!esv.relay();
+      const url = viaRelay
+        ? esv.relay() + "/?" + new URLSearchParams({q: esv.query(ref)})
+        : ESV_ENDPOINT + "?" + new URLSearchParams({
+            q: esv.query(ref),
+            "include-passage-references": "false",
+            "include-verse-numbers": "false",
+            "include-first-verse-numbers": "false",
+            "include-footnotes": "false",
+            "include-headings": "false",
+            "include-short-copyright": "false",
+            "include-passage-horizontal-lines": "false",
+            "include-heading-horizontal-lines": "false",
+            "indent-paragraphs": "0",
+            "indent-poetry": "false"
+          });
+      const res = await fetch(url, viaRelay
+        ? undefined
+        : {headers:{Authorization: "Token " + esv.key()}});
       if(res.status === 401){ esv.failed = "key"; return false; }
       if(!res.ok){ esv.failed = "http"; return false; }
       const data = await res.json();
@@ -571,12 +589,9 @@ window.addEventListener("appinstalled", () => {
 /* ---------------- settings sheet ---------------- */
 
 function esvStatus(){
-  if(!esv.key()) return `<p class="status">No key yet, so the app stays on the World English
-    Bible. A key is free for personal use.</p>`;
-  if(esv.failed === "key") return `<p class="status bad">That key was not accepted. Check it
-    on api.esv.org and paste it again.</p>`;
-  if(esv.failed === "network") return `<p class="status bad">Couldn’t reach the ESV API. Passages
-    already downloaded still work; the rest show the World English Bible.</p>`;
+  const why = esv.reason();
+  if(why) return `<p class="status${esv.failed ? " bad" : ""}">${esc(why.short)}${
+    why.long ? ". " + esc(why.long) : ""}</p>`;
   return `<p class="status">${esv.cachedCount()} of ${esv.totalCount()} passages downloaded and
     available offline.</p>`;
 }
@@ -601,11 +616,19 @@ function openSettings(){
       </div>
 
       <div class="field" id="s-esv-field"${prefs.bible === "esv" ? "" : " hidden"}>
-        <label for="s-esvkey">Your ESV API key</label>
-        <p class="help">Free for personal use from
-        <a href="https://api.esv.org/" target="_blank" rel="noopener">api.esv.org</a> — create an
-        account, add an application, and copy the key it gives you. It is stored only on this
-        device and sent only to Crossway.</p>
+        <label for="s-esvrelay">ESV relay URL</label>
+        <p class="help">Crossway's API is meant to be called by a web server, so a page cannot
+        reach it directly and the key must not live in one. The <code>worker/</code> folder in
+        this project deploys a relay that does both jobs in two commands; paste the URL it
+        prints here.</p>
+        <input type="text" id="s-esvrelay" value="${esc(esv.relay())}"
+               placeholder="https://esv-relay.…workers.dev" autocomplete="off"
+               spellcheck="false" inputmode="url">
+
+        <label for="s-esvkey" style="margin-top:1rem">…or an ESV API key</label>
+        <p class="help">Only if something else can reach Crossway on your behalf — a browser
+        normally cannot. Stored on this device alone. Free from
+        <a href="https://api.esv.org/" target="_blank" rel="noopener">api.esv.org</a>.</p>
         <input type="password" id="s-esvkey" value="${esc(esv.key())}"
                placeholder="Paste your key" autocomplete="off" spellcheck="false">
         <div id="s-esv-status">${esvStatus()}</div>
@@ -657,11 +680,23 @@ function openSettings(){
     if(el) el.innerHTML = esvStatus();
   };
 
+  /* Copy what is typed into the two ESV fields into storage, and forget any
+     earlier failure so the new setting actually gets a try. */
+  const syncEsvFields = () => {
+    const r = wrap.querySelector("#s-esvrelay").value.trim();
+    const k = wrap.querySelector("#s-esvkey").value.trim();
+    if(r !== esv.relay() || k !== esv.key()){
+      esv.setRelay(r);
+      esv.setKey(k);
+      esv.failed = false;
+      esv.tried.clear();
+    }
+  };
+
   const close = () => {
     const n = wrap.querySelector("#s-name").value.trim().slice(0, 40);
     if(n !== prefs.name){ prefs.name = n; store.set("p.name", n); }
-    const k = wrap.querySelector("#s-esvkey").value.trim();
-    if(k !== esv.key()){ esv.setKey(k); esv.failed = false; esv.tried.clear(); }
+    syncEsvFields();
     wrap.remove();
     document.removeEventListener("keydown", onKey);
     paint(false);
@@ -683,9 +718,8 @@ function openSettings(){
     }
 
     if(e.target.closest("[data-esv-test]")){
-      const k = wrap.querySelector("#s-esvkey").value.trim();
-      if(k !== esv.key()){ esv.setKey(k); esv.failed = false; esv.tried.clear(); }
-      if(!esv.key()){ toast("Paste your ESV key first"); return; }
+      syncEsvFields();
+      if(!esv.relay() && !esv.key()){ toast("Add your relay URL first"); return; }
       const btn = e.target.closest("[data-esv-test]");
       btn.disabled = true; btn.textContent = "Testing…";
       const probe = "John 3:16";
@@ -702,9 +736,8 @@ function openSettings(){
     }
 
     if(e.target.closest("[data-esv-fetch]")){
-      const k = wrap.querySelector("#s-esvkey").value.trim();
-      if(k !== esv.key()){ esv.setKey(k); esv.failed = false; esv.tried.clear(); }
-      if(!esv.key()){ toast("Paste your ESV key first"); return; }
+      syncEsvFields();
+      if(!esv.relay() && !esv.key()){ toast("Add your relay URL first"); return; }
       const btn = e.target.closest("[data-esv-fetch]");
       btn.disabled = true;
       const ok = await esv.fillAll((done, total) => { btn.textContent = `${done} / ${total}…`; });

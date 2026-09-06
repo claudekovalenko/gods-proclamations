@@ -36,22 +36,32 @@ tracking.
 **World English Bible** is the default. It is public domain, so it ships inside
 the app and works offline from the first launch.
 
-**ESV** is available, but not by bundling it. Crossway allows the ESV to be
-quoted without a licence only where the quotations stay under 25% of the work —
-and this app is essentially nothing but scripture, so shipping ESV text in it
-would need written permission. The sanctioned route is Crossway's own
-[ESV API](https://api.esv.org/), called with a key belonging to the reader.
+**ESV** is available, but it cannot be bundled, and it cannot be fetched by the
+page on its own. Two separate constraints:
 
-So: choose ESV in settings and paste your own key (free for personal use from
-api.esv.org — create an account, add an application, copy the key). The app then
-fetches passages as you read them and keeps them on your device, so they work
-offline afterwards. "Download all for offline" fetches the lot in one go. No key
-is committed to this repository or bundled in the app — Crossway's terms forbid
-publishing one, and each reader uses their own.
+- Crossway allow the ESV to be quoted without a licence only where the
+  quotations stay under 25% of the work. This app is essentially nothing but
+  scripture, so shipping ESV text in it would need written permission.
+- Their [ESV API](https://api.esv.org/) is built to be called by a web server.
+  It sends no CORS headers, so a browser refuses to hand the response to a page
+  on another origin — no key changes that — and their terms say not to publish
+  an access key, which anything shipped to a browser is.
 
-Any passage that has not been fetched falls back to the World English Bible, and
-the credit at the foot of each screen names whichever translation is actually on
-screen.
+So the ESV goes through a relay: a ~100-line Cloudflare Worker in
+[`worker/`](worker/) that holds your key as a secret, calls Crossway, and
+answers the app with the header the browser needs. Two commands to deploy, and
+[`worker/README.md`](worker/README.md) walks through it. Paste the URL it prints
+into **Settings → Translation → ESV**.
+
+The app then fetches passages as you read them and keeps them on your device, so
+they work offline afterwards; "Download all for offline" fetches the lot in one
+go, and the Worker caches each passage at its edge for a year, which keeps you
+far inside Crossway's limit of 5,000 requests a day.
+
+Any passage not yet fetched falls back to the World English Bible, and the
+credit at the foot of each screen names whichever translation is actually on
+screen. If something is stopping the ESV from loading, the reader says so and
+**Settings → Test my key** reports exactly what came back.
 
 ### Installing
 
@@ -113,6 +123,7 @@ docs/                 the app — this directory is what GitHub Pages serves
   manifest.webmanifest
   icons/              generated — see tools/make-icons.sh
 gods-love/            the same passages as Markdown
+worker/               the ESV relay — a Cloudflare Worker, deployed separately
 tools/make-icons.sh   redraws the icons from the heart path in index.html
 .github/workflows/pages.yml
 ```
