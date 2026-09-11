@@ -1,13 +1,14 @@
 /* Proclamations — app shell.
    No framework, no build step: the whole app is these files plus data.js.
 
-   Two translations. The World English Bible is public domain, so it ships
-   with the app and works offline from the first launch. The ESV is not:
-   Crossway's guidelines allow quoting it only where the quotations are
-   under a quarter of the work, which an app made entirely of scripture is
-   not. The sanctioned route is their own API, called with a key belonging
-   to the reader — so ESV text is fetched at runtime with a key kept on the
-   device, never bundled and never committed. */
+   The text in the app is the World English Bible, which is public domain
+   and so ships with it and works offline. The ESV cannot: Crossway allow
+   it to be quoted only where quotations stay under a quarter of the work,
+   and an app made entirely of scripture is far past that. So every passage
+   links out to esv.org — linking is not republishing, and it needs nothing
+   set up. Readers who want ESV text in the app itself can point it at a
+   relay holding their own key (see worker/); without one, nothing breaks
+   and nothing nags. */
 
 (() => {
 "use strict";
@@ -40,8 +41,7 @@ const store = {
 const prefs = {
   name:  store.get("p.name", ""),
   scale: parseFloat(store.get("p.scale", "1")) || 1,
-  theme: store.get("p.theme", "system"),
-  bible: store.get("p.bible", "web")            /* "web" | "esv" */
+  theme: store.get("p.theme", "system")
 };
 
 function applyPrefs(){
@@ -112,7 +112,9 @@ const esv = {
      API sends no CORS headers and a browser will not read a direct response. */
   relay(){ return store.get("p.esvRelay", "").replace(/\/+$/, ""); },
   setRelay(v){ store.set("p.esvRelay", v); },
-  on(){ return prefs.bible === "esv" && (!!esv.relay() || !!esv.key()); },
+  /* Configuring a relay is itself the switch. A separate "use the ESV"
+     toggle only ever produced the state where it was on and nothing changed. */
+  on(){ return !!esv.relay() || !!esv.key(); },
 
   cache: store.json("esv.cache", {}),
   saveCache(){ store.set("esv.cache", JSON.stringify(esv.cache)); },
@@ -133,13 +135,7 @@ const esv = {
      the ESV. Silence here was the whole problem: the app simply showed the
      fallback and said nothing. */
   reason(){
-    if(prefs.bible !== "esv") return null;
-    if(!esv.relay() && !esv.key()) return {
-      short: "The ESV needs a relay of your own",
-      long: "Crossway serve the ESV from an API meant for web servers, so a page cannot " +
-            "call it directly. The worker/ folder in this project deploys one in two " +
-            "commands; paste its URL into settings."
-    };
+    if(!esv.on()) return null;          /* nothing set up: nothing is broken */
     if(esv.failed === "key") return {
       short: esv.relay() ? "The relay's ESV key was rejected" : "That ESV key was rejected",
       long: esv.relay()
@@ -266,6 +262,15 @@ const body = s => esc(s).replace(/…/g, '<span class="ell">…</span>');
 
 const icon = (id, cls) => `<svg class="${cls || ""}" aria-hidden="true"><use href="#${id}"/></svg>`;
 
+/* esv.org takes a reference straight in the path, spaces as "+". Linking is not
+   redistribution, so this needs no key and no permission — it is the one route
+   to the ESV that works for everybody with nothing set up. */
+const esvLink = ref =>
+  "https://www.esv.org/" + ref.replace(/[\u2013\u2014]/g, "-").replace(/\s+/g, "+") + "/";
+
+const esvOut = ref => `<a class="esv-out" href="${esc(esvLink(ref))}"
+  target="_blank" rel="noopener">Read in ESV${icon("i-out")}</a>`;
+
 /* Which translations the view being built actually put on screen. The credit
    has to name the text the reader is looking at, not the one they asked for:
    with the ESV selected but a passage not yet fetched, what shows is the WEB. */
@@ -301,6 +306,7 @@ function card(p, opts = {}){
     </div>
     <p class="card-text${p.spoken ? " spoken" : ""}">${body(t.s)}${p.spoken ? "”" : ""}</p>
     ${opts.note ? `<p class="card-note">${esc(opts.note)}</p>` : ""}
+    <p class="card-foot">${esvOut(p.ref)}</p>
   </article>`;
 }
 
@@ -426,6 +432,7 @@ function viewRead(){
           ${icon(isSaved(p.key) ? "i-bookmark-fill" : "i-bookmark")}${isSaved(p.key) ? "Saved" : "Save"}</button>
         <button class="pill" data-share="${p.key}" aria-label="Share">${icon("i-share")}</button>
       </div>
+      <p class="read-foot">${esvOut(p.ref)}</p>
       ${credit()}
     </div>
   </article>`;
@@ -604,18 +611,18 @@ function openSettings(){
       <h2>Settings</h2>
 
       <div class="field">
-        <label>Translation</label>
-        <div class="choices" id="s-bible">
-          <button data-bible="web" aria-pressed="${prefs.bible === "web"}">World English</button>
-          <button data-bible="esv" aria-pressed="${prefs.bible === "esv"}">ESV</button>
-        </div>
-        <p class="help">The World English Bible is public domain, so it ships inside the app and
-        works offline straight away. The ESV is licensed: Crossway lets it be read through their
-        own API using a key that belongs to you, so the app fetches it as you read rather than
-        carrying a copy.</p>
+        <label>Reading the ESV</label>
+        <p class="help">Every passage carries a <b>Read in ESV</b> link that opens it on
+        esv.org. That works now, on any device, with nothing to set up — it is the only route
+        to the ESV that needs no key, because linking is not republishing.</p>
+        <p class="help">The text <em>inside</em> the app is the World English Bible, which is
+        public domain and therefore works offline. Crossway's licence does not allow the ESV to
+        be carried inside an app that is almost entirely scripture, and their API cannot be
+        called from a web page. Showing ESV text here needs the relay below — optional, and
+        everything works without it.</p>
       </div>
 
-      <div class="field" id="s-esv-field"${prefs.bible === "esv" ? "" : " hidden"}>
+      <div class="field" id="s-esv-field">
         <label for="s-esvrelay">ESV relay URL</label>
         <p class="help">Crossway's API is meant to be called by a web server, so a page cannot
         reach it directly and the key must not live in one. The <code>worker/</code> folder in
@@ -705,17 +712,6 @@ function openSettings(){
 
   wrap.addEventListener("click", async e => {
     if(e.target === wrap || e.target.closest("[data-close-sheet]")) return close();
-
-    const bi = e.target.closest("[data-bible]");
-    if(bi){
-      prefs.bible = bi.dataset.bible;
-      store.set("p.bible", prefs.bible);
-      wrap.querySelectorAll("#s-bible button").forEach(b =>
-        b.setAttribute("aria-pressed", String(b === bi)));
-      wrap.querySelector("#s-esv-field").hidden = prefs.bible !== "esv";
-      refreshStatus();
-      return;
-    }
 
     if(e.target.closest("[data-esv-test]")){
       syncEsvFields();

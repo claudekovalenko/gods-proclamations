@@ -36,8 +36,12 @@ tracking.
 **World English Bible** is the default. It is public domain, so it ships inside
 the app and works offline from the first launch.
 
-**ESV** is available, but it cannot be bundled, and it cannot be fetched by the
-page on its own. Two separate constraints:
+**ESV** is one tap away on every passage: a **Read in ESV** link opens it at that
+reference on esv.org. That needs no key and no setup, because linking is not
+republishing — it is the route that works for everybody, immediately.
+
+Showing ESV *text inside the app* is a different matter, and cannot be done by
+the page alone. Two separate constraints:
 
 - Crossway allow the ESV to be quoted without a licence only where the
   quotations stay under 25% of the work. This app is essentially nothing but
@@ -47,11 +51,11 @@ page on its own. Two separate constraints:
   on another origin — no key changes that — and their terms say not to publish
   an access key, which anything shipped to a browser is.
 
-So the ESV goes through a relay: a ~100-line Cloudflare Worker in
+So ESV text inside the app goes through a relay: a ~100-line Cloudflare Worker in
 [`worker/`](worker/) that holds your key as a secret, calls Crossway, and
 answers the app with the header the browser needs. Two commands to deploy, and
 [`worker/README.md`](worker/README.md) walks through it. Paste the URL it prints
-into **Settings → Translation → ESV**.
+into **Settings → ESV relay URL**. This is optional; everything works without it.
 
 The app then fetches passages as you read them and keeps them on your device, so
 they work offline afterwards; "Download all for offline" fetches the lot in one

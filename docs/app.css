@@ -486,6 +486,18 @@ p.standfirst{
   max-width:calc(100vw - 2rem);text-align:center;
 }
 
+/* out to esv.org — present on every passage, needs nothing set up */
+.esv-out{
+  font-family:var(--f-util);font-size:.7rem;font-weight:600;
+  letter-spacing:.04em;
+  color:var(--ink-faint);text-decoration:none;
+  display:inline-flex;align-items:center;gap:.3rem;
+}
+.esv-out svg{width:.78rem;height:.78rem}
+.esv-out:hover{color:var(--rubric);text-decoration:underline;text-underline-offset:3px}
+.card-foot{margin:.7rem 0 0}
+.read-foot{margin:.9rem 0 0}
+
 /* why you are not seeing the translation you chose */
 .notice{
   display:flex;align-items:flex-start;gap:.85rem;
